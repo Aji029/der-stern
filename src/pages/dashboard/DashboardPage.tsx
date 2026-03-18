@@ -46,15 +46,16 @@ export function DashboardPage() {
       .not('status', 'eq', 'Cancelled')
       .gte('order_date', since.toISOString())
       .then(({ data }) => {
-        // Build a map of date → revenue
+        // Build a map of date → revenue using local dates to avoid timezone off-by-one
+        const toLocalKey = (d: Date) => d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
         const map: Record<string, number> = {};
         for (let i = 0; i < days; i++) {
           const d = new Date();
-          d.setDate(d.getDate() - (days - 1 - i));
-          map[d.toISOString().slice(0, 10)] = 0;
+          d.setDate(d.getDate() - (days - 2 - i)); // end at today+1 to catch timezone-shifted orders
+          map[toLocalKey(d)] = 0;
         }
         (data || []).forEach(o => {
-          const key = new Date(o.order_date).toISOString().slice(0, 10);
+          const key = toLocalKey(new Date(o.order_date));
           if (key in map) map[key] += parseFloat(o.total_amount || '0');
         });
         const result: DayRevenue[] = Object.entries(map).map(([date, amount]) => {
@@ -178,9 +179,9 @@ export function DashboardPage() {
             const max = Math.max(...salesData.map(d => d.amount), 1);
             return (
               <div className="h-56 flex flex-col justify-end">
-                <div className="flex items-end gap-1 h-44">
+                <div className="flex gap-1 h-44">
                   {salesData.map(d => (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group relative">
+                    <div key={d.date} className="flex-1 h-full flex flex-col justify-end items-center group relative">
                       {/* Tooltip */}
                       <div className="absolute bottom-full mb-1 hidden group-hover:flex bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                         {formatPrice(d.amount)}
