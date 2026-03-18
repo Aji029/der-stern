@@ -43,7 +43,7 @@ export function DashboardPage() {
     supabase
       .from('orders')
       .select('order_date, total_amount')
-      .eq('status', 'Completed')
+      .not('status', 'eq', 'Cancelled')
       .gte('order_date', since.toISOString())
       .then(({ data }) => {
         // Build a map of date → revenue
@@ -200,7 +200,7 @@ export function DashboardPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-2 text-right">Completed orders revenue</p>
+                <p className="text-xs text-gray-400 mt-2 text-right">Orders revenue (excl. cancelled)</p>
               </div>
             );
           })()}
