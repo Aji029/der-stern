@@ -1,27 +1,36 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
-import { DashboardPage } from './pages/dashboard/DashboardPage';
-import { ProductsPage } from './pages/dashboard/ProductsPage';
-import { CustomersPage } from './pages/dashboard/CustomersPage';
-import { SuppliersPage } from './pages/dashboard/SuppliersPage';
-import { OrdersPage } from './pages/dashboard/OrdersPage';
-import { ReportsPage } from './pages/dashboard/ReportsPage';
-import { TodaysPickPage } from './pages/dashboard/TodaysPickPage';
-import { SammelrechnungPage } from './pages/dashboard/SammelrechnungPage';
-import { AddProductForm } from './pages/dashboard/forms/AddProductForm';
-import { EditProductForm } from './pages/dashboard/forms/EditProductForm';
-import { AddCustomerForm } from './pages/dashboard/forms/AddCustomerForm';
-import { EditCustomerForm } from './pages/dashboard/forms/EditCustomerForm';
-import { AddSupplierForm } from './pages/dashboard/forms/AddSupplierForm';
-import { EditSupplierForm } from './pages/dashboard/forms/EditSupplierForm';
-import { AddOrderForm } from './pages/dashboard/forms/AddOrderForm';
-import { EditOrderForm } from './pages/dashboard/forms/EditOrderForm';
-import { SupplierProductsPage } from './pages/dashboard/SupplierProductsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ProductsPage = lazy(() => import('./pages/dashboard/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const CustomersPage = lazy(() => import('./pages/dashboard/CustomersPage').then(m => ({ default: m.CustomersPage })));
+const SuppliersPage = lazy(() => import('./pages/dashboard/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const OrdersPage = lazy(() => import('./pages/dashboard/OrdersPage').then(m => ({ default: m.OrdersPage })));
+const ReportsPage = lazy(() => import('./pages/dashboard/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const TodaysPickPage = lazy(() => import('./pages/dashboard/TodaysPickPage').then(m => ({ default: m.TodaysPickPage })));
+const SammelrechnungPage = lazy(() => import('./pages/dashboard/SammelrechnungPage').then(m => ({ default: m.SammelrechnungPage })));
+const AddProductForm = lazy(() => import('./pages/dashboard/forms/AddProductForm').then(m => ({ default: m.AddProductForm })));
+const EditProductForm = lazy(() => import('./pages/dashboard/forms/EditProductForm').then(m => ({ default: m.EditProductForm })));
+const AddCustomerForm = lazy(() => import('./pages/dashboard/forms/AddCustomerForm').then(m => ({ default: m.AddCustomerForm })));
+const EditCustomerForm = lazy(() => import('./pages/dashboard/forms/EditCustomerForm').then(m => ({ default: m.EditCustomerForm })));
+const AddSupplierForm = lazy(() => import('./pages/dashboard/forms/AddSupplierForm').then(m => ({ default: m.AddSupplierForm })));
+const EditSupplierForm = lazy(() => import('./pages/dashboard/forms/EditSupplierForm').then(m => ({ default: m.EditSupplierForm })));
+const AddOrderForm = lazy(() => import('./pages/dashboard/forms/AddOrderForm').then(m => ({ default: m.AddOrderForm })));
+const EditOrderForm = lazy(() => import('./pages/dashboard/forms/EditOrderForm').then(m => ({ default: m.EditOrderForm })));
+const SupplierProductsPage = lazy(() => import('./pages/dashboard/SupplierProductsPage').then(m => ({ default: m.SupplierProductsPage })));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export function AppRoutes() {
   return (
@@ -37,23 +46,23 @@ export function AppRoutes() {
           <DashboardLayout />
         </ProtectedRoute>
       }>
-        <Route index element={<DashboardPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="products/new" element={<AddProductForm />} />
-        <Route path="products/:artikelNr/edit" element={<EditProductForm />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="customers/new" element={<AddCustomerForm />} />
-        <Route path="customers/:id/edit" element={<EditCustomerForm />} />
-        <Route path="suppliers" element={<SuppliersPage />} />
-        <Route path="suppliers/new" element={<AddSupplierForm />} />
-        <Route path="suppliers/:id/edit" element={<EditSupplierForm />} />
-        <Route path="suppliers/:supplierId/products" element={<SupplierProductsPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="orders/new" element={<AddOrderForm />} />
-        <Route path="orders/:id/edit" element={<EditOrderForm />} />
-        <Route path="sammelrechnungen" element={<SammelrechnungPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="todays-pick" element={<TodaysPickPage />} />
+        <Route index element={<Suspense fallback={<PageLoader />}><DashboardPage /></Suspense>} />
+        <Route path="products" element={<Suspense fallback={<PageLoader />}><ProductsPage /></Suspense>} />
+        <Route path="products/new" element={<Suspense fallback={<PageLoader />}><AddProductForm /></Suspense>} />
+        <Route path="products/:artikelNr/edit" element={<Suspense fallback={<PageLoader />}><EditProductForm /></Suspense>} />
+        <Route path="customers" element={<Suspense fallback={<PageLoader />}><CustomersPage /></Suspense>} />
+        <Route path="customers/new" element={<Suspense fallback={<PageLoader />}><AddCustomerForm /></Suspense>} />
+        <Route path="customers/:id/edit" element={<Suspense fallback={<PageLoader />}><EditCustomerForm /></Suspense>} />
+        <Route path="suppliers" element={<Suspense fallback={<PageLoader />}><SuppliersPage /></Suspense>} />
+        <Route path="suppliers/new" element={<Suspense fallback={<PageLoader />}><AddSupplierForm /></Suspense>} />
+        <Route path="suppliers/:id/edit" element={<Suspense fallback={<PageLoader />}><EditSupplierForm /></Suspense>} />
+        <Route path="suppliers/:supplierId/products" element={<Suspense fallback={<PageLoader />}><SupplierProductsPage /></Suspense>} />
+        <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
+        <Route path="orders/new" element={<Suspense fallback={<PageLoader />}><AddOrderForm /></Suspense>} />
+        <Route path="orders/:id/edit" element={<Suspense fallback={<PageLoader />}><EditOrderForm /></Suspense>} />
+        <Route path="sammelrechnungen" element={<Suspense fallback={<PageLoader />}><SammelrechnungPage /></Suspense>} />
+        <Route path="reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
+        <Route path="todays-pick" element={<Suspense fallback={<PageLoader />}><TodaysPickPage /></Suspense>} />
       </Route>
 
       {/* Root Redirect */}

@@ -10,5 +10,17 @@ export default defineConfig({
     hmr: {
       timeout: 5000
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-lucide': ['lucide-react'],
+          'vendor-pdf': ['@react-pdf/renderer'],
+        }
+      }
+    }
   }
 });

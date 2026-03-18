@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { DollarSign, Package, Users, Factory, ArrowRight } from 'lucide-react';
-import { useProducts } from '../../context/ProductContext';
-import { useCustomers } from '../../context/CustomerContext';
-import { useSuppliers } from '../../context/SupplierContext';
 import { useOrders } from '../../context/OrderContext';
 import { supabase } from '../../lib/supabase';
 import { formatPrice } from '../../utils/priceCalculations';
@@ -15,23 +12,28 @@ interface DayRevenue {
 }
 
 export function DashboardPage() {
-  const { products } = useProducts();
-  const { customers } = useCustomers();
-  const { suppliers } = useSuppliers();
   const { orders } = useOrders();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [salesData, setSalesData] = useState<DayRevenue[]>([]);
   const [salesRange, setSalesRange] = useState<'7' | '30'>('7');
+  const [counts, setCounts] = useState({ products: 0, customers: 0, suppliers: 0 });
 
+  // Lightweight count-only queries — no bulk data fetched
   useEffect(() => {
-    supabase
-      .from('orders')
-      .select('total_amount')
-      .eq('status', 'Completed')
-      .then(({ data }) => {
-        const total = (data || []).reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
-        setTotalRevenue(total);
+    Promise.all([
+      supabase.from('products').select('*', { count: 'exact', head: true }),
+      supabase.from('customers').select('*', { count: 'exact', head: true }),
+      supabase.from('suppliers').select('*', { count: 'exact', head: true }),
+      supabase.from('orders').select('total_amount').eq('status', 'Completed'),
+    ]).then(([products, customers, suppliers, revenue]) => {
+      setCounts({
+        products: products.count ?? 0,
+        customers: customers.count ?? 0,
+        suppliers: suppliers.count ?? 0,
       });
+      const total = (revenue.data || []).reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
+      setTotalRevenue(total);
+    });
   }, []);
 
   useEffect(() => {
@@ -77,19 +79,19 @@ export function DashboardPage() {
     },
     {
       name: 'Total Products',
-      value: products.length.toString(),
+      value: counts.products.toString(),
       icon: Package,
       link: '/dashboard/products',
     },
     {
       name: 'Total Customers',
-      value: customers.length.toString(),
+      value: counts.customers.toString(),
       icon: Users,
       link: '/dashboard/customers',
     },
     {
       name: 'Total Suppliers',
-      value: suppliers.length.toString(),
+      value: counts.suppliers.toString(),
       icon: Factory,
       link: '/dashboard/suppliers',
     },
