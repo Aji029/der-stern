@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { MobileNav } from './MobileNav';
 import { useSidebar } from '../../hooks/useSidebar';
+import { GlobalSearch } from './GlobalSearch';
 
 export const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -158,7 +159,8 @@ export function DashboardLayout() {
                   {getCurrentPageName()}
                 </h1>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <GlobalSearch />
                 <button className="p-1 text-gray-400 hover:text-yellow-500 transition-colors duration-200">
                   <Bell className="w-6 h-6" />
                 </button>
