@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
+import {
+  LayoutDashboard,
+  Package,
+  Users,
   ShoppingCart,
   BarChart,
   Bell,
@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Calendar,
   Menu,
-  FileText
+  FileText,
+  PackageCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
@@ -30,6 +31,7 @@ export const navigation = [
   { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
   { name: 'Sammelrechnungen', href: '/dashboard/sammelrechnungen', icon: FileText },
   { name: "Today's Pick", href: '/dashboard/todays-pick', icon: Calendar },
+  { name: 'Fulfillment', href: '/dashboard/fulfillment', icon: PackageCheck },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart },
 ];
 
