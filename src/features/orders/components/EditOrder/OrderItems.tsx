@@ -278,25 +278,28 @@ function OrderItemCard({
         </div>
       </div>
 
-      {/* Supplier - Compact */}
-      <div className="mb-3">
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+      {/* Supplier — compact inline row */}
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-xs font-medium text-gray-400 w-14 flex-shrink-0">
           Supplier
         </label>
-        <SupplierSelect
-          value={item.product.supplierId || ''}
-          onChange={(supplierId) => {
-            onUpdateItem(actualIndex, {
-              product: { ...item.product, supplierId }
-            });
-          }}
-        />
+        <div className="flex-1">
+          <SupplierSelect
+            value={item.product.supplierId || ''}
+            onChange={(supplierId) => {
+              onUpdateItem(actualIndex, {
+                product: { ...item.product, supplierId }
+              });
+            }}
+          />
+        </div>
       </div>
 
-      {/* Quantity and Prices - Compact Grid */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+      {/* Qty · EK · VK — 4-col grid: qty=2, ek=1, vk=1 */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {/* Qty — wider + bigger text */}
+        <div className="col-span-2">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
             Qty
           </label>
           <input
@@ -311,12 +314,13 @@ function OrderItemCard({
                 total: quantity * item.vkPrice,
               });
             }}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-base font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
           />
         </div>
 
+        {/* EK */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-medium text-gray-400 mb-1">
             EK
           </label>
           <EditablePrice
@@ -325,17 +329,20 @@ function OrderItemCard({
           />
         </div>
 
+        {/* VK — highlighted as primary edit target */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
             VK
           </label>
-          <EditablePrice
-            value={item.vkPrice}
-            onChange={(value) => onUpdateItem(actualIndex, {
-              vkPrice: value,
-              total: item.quantity * value,
-            })}
-          />
+          <div className="ring-1 ring-yellow-300 rounded-lg">
+            <EditablePrice
+              value={item.vkPrice}
+              onChange={(value) => onUpdateItem(actualIndex, {
+                vkPrice: value,
+                total: item.quantity * value,
+              })}
+            />
+          </div>
         </div>
       </div>
 
