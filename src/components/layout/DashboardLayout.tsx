@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { MobileNav } from './MobileNav';
+import { BottomTabBar } from './BottomTabBar';
 import { useSidebar } from '../../hooks/useSidebar';
 import { GlobalSearch } from './GlobalSearch';
 
@@ -39,11 +40,11 @@ export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { 
-    isCollapsed, 
-    setIsCollapsed, 
-    isMobileMenuOpen, 
-    setIsMobileMenuOpen 
+  const {
+    isCollapsed,
+    setIsCollapsed,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen
   } = useSidebar();
 
   const handleLogout = async () => {
@@ -57,9 +58,7 @@ export function DashboardLayout() {
 
   const getCurrentPageName = () => {
     const path = location.pathname;
-    if (path.includes('/suppliers/') && path.includes('/products')) {
-      return 'Supplier Products';
-    }
+    if (path.includes('/suppliers/') && path.includes('/products')) return 'Supplier Products';
     return navigation.find(item => item.href === path)?.name || 'Dashboard';
   };
 
@@ -68,7 +67,7 @@ export function DashboardLayout() {
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:relative lg:flex lg:flex-col">
-          <div 
+          <div
             className={`flex flex-col h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out group ${
               isCollapsed ? 'w-16 hover:w-64' : 'w-64'
             }`}
@@ -123,23 +122,21 @@ export function DashboardLayout() {
               </button>
             </div>
 
-            {/* Collapse Toggle Button */}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="absolute top-1/2 -right-3 transform -translate-y-1/2 z-10 w-6 h-6 bg-white rounded-full border border-gray-200 flex items-center justify-center shadow-md hover:bg-gray-50 focus:outline-none transition-transform duration-200"
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4 text-gray-600" />
-              ) : (
-                <ChevronLeft className="h-4 w-4 text-gray-600" />
-              )}
+              {isCollapsed
+                ? <ChevronRight className="h-4 w-4 text-gray-600" />
+                : <ChevronLeft className="h-4 w-4 text-gray-600" />
+              }
             </button>
           </div>
         </div>
 
-        {/* Mobile menu */}
-        <MobileNav 
+        {/* Mobile slide-out menu (via More button in bottom tab bar) */}
+        <MobileNav
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
           onLogout={handleLogout}
@@ -162,25 +159,32 @@ export function DashboardLayout() {
                 </h1>
               </div>
               <div className="flex items-center space-x-3">
-                <GlobalSearch />
+                {/* Search hidden on mobile — bottom tab bar handles navigation */}
+                <div className="hidden sm:block">
+                  <GlobalSearch />
+                </div>
                 <button className="p-1 text-gray-400 hover:text-yellow-500 transition-colors duration-200">
                   <Bell className="w-6 h-6" />
                 </button>
-                <div className="flex items-center">
+                {/* Username hidden on mobile to save header space */}
+                <div className="hidden sm:flex items-center">
                   <span className="text-sm font-medium text-gray-700">{user?.name}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Main content area */}
+          {/* Main content area — extra bottom padding on mobile for bottom tab bar */}
           <div className="flex-1 overflow-auto">
-            <div className="p-6">
+            <div className="p-6 pb-24 lg:pb-6">
               <Outlet />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Bottom tab bar — mobile/tablet only */}
+      <BottomTabBar onMorePress={() => setIsMobileMenuOpen(true)} />
     </div>
   );
 }

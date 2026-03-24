@@ -226,16 +226,139 @@ export function FulfillmentPage() {
           </div>
         </div>
 
-        {/* Table */}
-        {filtered.length === 0 ? (
+        {/* Empty state */}
+        {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-gray-400">
             <CheckCircle2 className="h-10 w-10 mb-2 text-green-400" />
             <p className="text-sm font-medium">
               {activeTab === 'to-pack' ? 'All caught up — nothing left to pack!' : 'No orders here yet.'}
             </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
+        )}
+
+        {/* ── Mobile card list (sm:hidden) ── */}
+        {filtered.length > 0 && (
+          <div className="sm:hidden divide-y divide-gray-100">
+            {filtered.map(({ order, total, packed, remaining }) => {
+              const isPacking = packingAll.has(order.id);
+              const allPacked = remaining === 0;
+              const isExpanded = expandedOrders.has(order.id);
+              const unpackedItems = order.items.filter(i => !i.isPacked);
+              return (
+                <div key={order.id}>
+                  {/* Card header */}
+                  <div
+                    className={`p-4 ${isExpanded ? 'bg-yellow-50/40' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">#{order.id}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            order.status === 'Completed' ? 'bg-green-100 text-green-800'
+                            : order.status === 'Processing' ? 'bg-blue-100 text-blue-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                          }`}>{order.status}</span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-800 mt-0.5">{order.customer.companyName}</p>
+                        <p className="text-xs text-gray-400">{new Date(order.orderDate).toLocaleDateString('de-DE')}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleExpand(order.id)}
+                        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        {isExpanded
+                          ? <ChevronDown className="h-5 w-5 text-yellow-500" />
+                          : <ChevronRight className="h-5 w-5 text-gray-400" />
+                        }
+                      </button>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mb-3">
+                      <PackingBar packed={packed} total={total} />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {!allPacked && (
+                        <button
+                          onClick={() => handlePackAll(order)}
+                          disabled={isPacking}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 disabled:opacity-50 transition-colors"
+                        >
+                          {isPacking ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
+                          Pack All
+                        </button>
+                      )}
+                      {allPacked && (
+                        <span className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm text-green-600 font-medium py-2">
+                          <CheckCircle2 className="h-4 w-4" /> All Packed
+                        </span>
+                      )}
+                      <Link
+                        to={`/dashboard/orders/${order.id}/edit`}
+                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors"
+                      >
+                        Edit <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Expanded missing items */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 bg-gray-50/60">
+                      {unpackedItems.length === 0 ? (
+                        <div className="flex items-center gap-2 py-2 text-green-600 text-sm font-medium">
+                          <CheckCircle2 className="h-4 w-4" /> All items packed
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                            Missing items ({unpackedItems.length})
+                          </p>
+                          <div className="space-y-1.5">
+                            {unpackedItems.map(item => {
+                              const isToggling = item.id ? togglingItem.has(item.id) : false;
+                              return (
+                                <div
+                                  key={item.id ?? item.product.artikelNr}
+                                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white border border-gray-200 active:bg-yellow-50 transition-colors"
+                                >
+                                  <button
+                                    onClick={() => handleToggleItem(order, item)}
+                                    disabled={isToggling}
+                                    className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                                      isToggling ? 'border-gray-300 bg-gray-100' : 'border-gray-300 hover:border-yellow-500'
+                                    }`}
+                                  >
+                                    {isToggling && <Loader2 className="h-3 w-3 text-gray-400 animate-spin" />}
+                                  </button>
+                                  <Box className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-medium text-gray-800 truncate block">{item.product.name}</span>
+                                    <span className="text-xs text-gray-400">Art. {item.product.artikelNr}</span>
+                                  </div>
+                                  <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    × {item.quantity}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Desktop table (hidden on mobile) ── */}
+        {filtered.length > 0 && (
+          <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
