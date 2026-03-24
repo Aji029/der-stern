@@ -295,10 +295,10 @@ function OrderItemCard({
         </div>
       </div>
 
-      {/* Qty · EK · VK — 4-col grid: qty=2, ek=1, vk=1 */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        {/* Qty — wider + bigger text */}
-        <div className="col-span-2">
+      {/* Qty · EK · VK — flex row: qty fixed-width, ek/vk share remaining space */}
+      <div className="flex items-start gap-2 mb-3">
+        {/* Qty — compact fixed width, big centered number */}
+        <div className="w-20 flex-shrink-0">
           <label className="block text-xs font-semibold text-gray-700 mb-1">
             Qty
           </label>
@@ -314,12 +314,12 @@ function OrderItemCard({
                 total: quantity * item.vkPrice,
               });
             }}
-            className="w-full px-3 py-2 text-base font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
+            className="w-full px-2 py-2 text-base font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
           />
         </div>
 
-        {/* EK */}
-        <div>
+        {/* EK — fills half the remaining space */}
+        <div className="flex-1">
           <label className="block text-xs font-medium text-gray-400 mb-1">
             EK
           </label>
@@ -329,8 +329,8 @@ function OrderItemCard({
           />
         </div>
 
-        {/* VK — highlighted as primary edit target */}
-        <div>
+        {/* VK — fills half the remaining space, highlighted */}
+        <div className="flex-1">
           <label className="block text-xs font-semibold text-gray-700 mb-1">
             VK
           </label>
