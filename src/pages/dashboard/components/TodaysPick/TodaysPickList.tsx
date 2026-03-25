@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
-import { Package, Loader, FileText } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import { Package, Loader, FileText, ScanLine } from 'lucide-react';
+import { BillScanSheet } from '../../../../features/supplierBills/components/BillScanSheet';
 import { pdf } from '@react-pdf/renderer';
 import { EditableEKPrice } from '../../../../components/ui/EditableEKPrice';
 import { formatDateForDisplay } from '../../../../utils/dateFormatting';
@@ -35,6 +36,7 @@ export function TodaysPickList({ groupedOrders, selectedDate, isLoading, error }
   const { updatePriceAndOrders } = useEKPriceUpdate();
   const { updateSupplierAcrossOrders } = useSupplierUpdate();
   const { suppliers } = useSuppliers();
+  const [activeScanSupplier, setActiveScanSupplier] = useState<{ id: string; name: string } | null>(null);
 
   const handlePriceUpdate = useCallback(async (artikelNr: string, newPrice: number) => {
     await updatePriceAndOrders(artikelNr, newPrice);
@@ -155,6 +157,13 @@ export function TodaysPickList({ groupedOrders, selectedDate, isLoading, error }
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
+                  onClick={() => setActiveScanSupplier({ id: group.supplierId, name: group.supplierName })}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 active:scale-95 transition-all text-sm font-bold shadow-sm"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  Scan Bill
+                </button>
+                <button
                   onClick={() => handleSimplifiedPDF(group)}
                   className={`flex items-center justify-center gap-2 px-4 py-2 ${colorScheme.accent} text-white rounded-lg hover:opacity-90 transition-all text-sm font-medium shadow-sm`}
                 >
@@ -240,6 +249,15 @@ export function TodaysPickList({ groupedOrders, selectedDate, isLoading, error }
           </div>
         );
       })}
+
+      {/* Bill scan sheet — rendered at the root so it overlays everything */}
+      {activeScanSupplier && (
+        <BillScanSheet
+          supplierId={activeScanSupplier.id}
+          supplierName={activeScanSupplier.name}
+          onClose={() => setActiveScanSupplier(null)}
+        />
+      )}
     </div>
   );
 }

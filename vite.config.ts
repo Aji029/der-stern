@@ -19,6 +19,7 @@ export default defineConfig({
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-lucide': ['lucide-react'],
           'vendor-pdf': ['@react-pdf/renderer'],
+          'vendor-anthropic': ['@anthropic-ai/sdk'],
         }
       }
     }
