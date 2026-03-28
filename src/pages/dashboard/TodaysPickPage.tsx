@@ -20,10 +20,10 @@ export function TodaysPickPage() {
   }, [groupedOrders, selectedSuppliers]);
 
   const toggleSupplier = (supplierId: string) => {
+    // Single-select: clicking a supplier shows only that one.
+    // Clicking the same supplier again deselects → back to "All".
     setSelectedSuppliers(prev =>
-      prev.includes(supplierId)
-        ? prev.filter(id => id !== supplierId)
-        : [...prev, supplierId]
+      prev.length === 1 && prev[0] === supplierId ? [] : [supplierId]
     );
   };
 
