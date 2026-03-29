@@ -259,7 +259,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
                 <div className="absolute -inset-2 border-2 border-yellow-300 rounded-full animate-ping opacity-40" />
               </div>
               <div className="text-center">
-                <p className="font-semibold text-gray-900">Reading invoice with Claude AI…</p>
+                <p className="font-semibold text-gray-900">Reading invoice with Gemini AI…</p>
                 <p className="text-sm text-gray-500 mt-1">Matching products and extracting prices</p>
               </div>
               <Loader className="w-5 h-5 text-gray-400 animate-spin" />
@@ -329,7 +329,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
               disabled={!file || isAnalysing}
               className="w-full py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              Analyse Bill with Claude AI
+              Analyse Bill with Gemini AI
             </button>
           )}
 

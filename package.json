@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^3.4.0",
     "@supabase/supabase-js": "^2.39.7",
     "@tanstack/react-table": "^8.13.2",

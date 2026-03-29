@@ -1,12 +1,7 @@
 import { useState } from 'react';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Product } from '../../../types/product';
 import type { BillAnalysisResult, ExtractedPriceMatch } from '../types';
-
-const client = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,7 +69,6 @@ export function useBillAnalysis() {
     setResult(null);
 
     try {
-      const base64Data = await fileToBase64(file);
       const isImage = file.type.startsWith('image/');
       const isPDF = file.type === 'application/pdf';
 
@@ -82,46 +76,23 @@ export function useBillAnalysis() {
         throw new Error('Please upload an image (JPG, PNG) or PDF file.');
       }
 
-      // Build the content block for image or PDF
-      const fileContent = isImage
-        ? ({
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: file.type as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: base64Data,
-            },
-          } as const)
-        : ({
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: base64Data,
-            },
-          } as const);
+      const base64Data = await fileToBase64(file);
 
-      const response = await client.messages.create({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              fileContent,
-              {
-                type: 'text',
-                text: buildPrompt(supplierName, supplierProducts),
-              },
-            ],
+      // Gemini supports both images and PDFs via the same inlineData API
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: file.type,
           },
-        ],
-      });
+        },
+        buildPrompt(supplierName, supplierProducts),
+      ]);
 
-      const rawText = response.content
-        .filter(block => block.type === 'text')
-        .map(block => (block as { type: 'text'; text: string }).text)
-        .join('');
+      const rawText = result.response.text();
 
       // Extract JSON — handle any wrapping markdown code fences
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -146,7 +117,6 @@ export function useBillAnalysis() {
             currentEkPrice: product.ekPrice,
             newEkPrice: Number(match.newEkPrice),
             confidence: (match.confidence as 'high' | 'medium' | 'low') || 'medium',
-            // Pre-select high/medium confidence, leave low unchecked for user review
             selected: match.confidence !== 'low',
           };
         })
