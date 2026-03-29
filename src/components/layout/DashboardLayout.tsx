@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AIAssistantButton, AIAssistantPanel, useAIAssistant } from '../../features/aiAssistant';
 import {
   LayoutDashboard,
   Package,
@@ -46,6 +47,8 @@ export function DashboardLayout() {
     isMobileMenuOpen,
     setIsMobileMenuOpen
   } = useSidebar();
+
+  const { messages, isLoading: aiLoading, isOpen: isAIOpen, open: openAI, close: closeAI, sendMessage, resetChat } = useAIAssistant();
 
   const handleLogout = async () => {
     try {
@@ -185,6 +188,18 @@ export function DashboardLayout() {
 
       {/* Bottom tab bar — mobile/tablet only */}
       <BottomTabBar onMorePress={() => setIsMobileMenuOpen(true)} />
+
+      {/* AI Assistant floating button + panel */}
+      <AIAssistantButton onClick={openAI} isLoading={aiLoading} />
+      {isAIOpen && (
+        <AIAssistantPanel
+          messages={messages}
+          isLoading={aiLoading}
+          onSend={sendMessage}
+          onReset={resetChat}
+          onClose={closeAI}
+        />
+      )}
     </div>
   );
 }
