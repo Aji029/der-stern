@@ -28,7 +28,8 @@ export function useOrdersWithPagination(pageSize: number = 10) {
   const fetchOrders = useCallback(async (
     page: number,
     dateFilter?: string,
-    statusFilter: OrderStatusFilter = 'pending'
+    statusFilter: OrderStatusFilter = 'pending',
+    customerSearch?: string
   ) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -47,6 +48,28 @@ export function useOrdersWithPagination(pageSize: number = 10) {
         end.setHours(23, 59, 59, 999);
         startOfDay = start.toISOString();
         endOfDay = end.toISOString();
+      }
+
+      // Resolve customer IDs for search filter (two-step: customers → orders)
+      let customerIds: string[] | null = null;
+      if (customerSearch && customerSearch.trim().length > 0) {
+        const { data: matchingCustomers, error: custErr } = await supabase
+          .from('customers')
+          .select('id')
+          .ilike('company_name', `%${customerSearch.trim()}%`);
+        if (custErr) throw custErr;
+        customerIds = (matchingCustomers || []).map((c: { id: string }) => c.id);
+        // If no customers match, return empty result immediately
+        if (customerIds.length === 0) {
+          setState(prev => ({
+            ...prev,
+            orders: [],
+            totalPages: 1,
+            isLoading: false,
+            error: null,
+          }));
+          return;
+        }
       }
 
       // Fetch all counts for badges
@@ -90,6 +113,11 @@ export function useOrdersWithPagination(pageSize: number = 10) {
         countQuery = countQuery
           .gte('order_date', startOfDay)
           .lte('order_date', endOfDay);
+      }
+
+      // Apply customer search filter
+      if (customerIds !== null) {
+        countQuery = countQuery.in('customer_id', customerIds);
       }
 
       const { count, error: countError } = await countQuery;
@@ -145,6 +173,11 @@ export function useOrdersWithPagination(pageSize: number = 10) {
         dataQuery = dataQuery
           .gte('order_date', startOfDay)
           .lte('order_date', endOfDay);
+      }
+
+      // Apply customer search filter
+      if (customerIds !== null) {
+        dataQuery = dataQuery.in('customer_id', customerIds);
       }
 
       const { data, error } = await dataQuery

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Calendar, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, Download, Filter, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { OrderList } from '../../components/OrderList';
 import { BackButton } from '../../components/navigation/BackButton';
@@ -15,6 +15,9 @@ export function OrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [showMonthlyGenerator, setShowMonthlyGenerator] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const statusFromUrl = (searchParams.get('status') as OrderStatusFilter) || 'pending';
   const [activeTab, setActiveTab] = useState<OrderStatusFilter>(statusFromUrl);
@@ -39,10 +42,27 @@ export function OrdersPage() {
     hasFilter
   } = useOrderDateFilter();
 
+  // Debounce customer search — 400ms after user stops typing
+  const handleSearchChange = (value: string) => {
+    setCustomerSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 400);
+  };
+
+  const handleClearSearch = () => {
+    setCustomerSearch('');
+    setDebouncedSearch('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setPage(1);
+  };
+
   // Memoize the fetch function to prevent unnecessary re-renders
   const loadOrders = useCallback(() => {
-    fetchOrders(page, selectedDate, activeTab);
-  }, [fetchOrders, page, selectedDate, activeTab]);
+    fetchOrders(page, selectedDate, activeTab, debouncedSearch || undefined);
+  }, [fetchOrders, page, selectedDate, activeTab, debouncedSearch]);
 
   useEffect(() => {
     loadOrders();
@@ -80,9 +100,11 @@ export function OrdersPage() {
         <div className="w-full sm:w-auto">
           <BackButton to="/dashboard" label="Back to Dashboard" />
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">Orders</h1>
-          {hasFilter && (
+          {(hasFilter || debouncedSearch) && (
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Showing filtered orders
+              {debouncedSearch
+                ? `Showing orders for "${debouncedSearch}"`
+                : 'Showing filtered orders'}
             </p>
           )}
         </div>
@@ -109,23 +131,54 @@ export function OrdersPage() {
       )}
 
       <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
-          <div className="flex-1 w-full">
-            <OrderDateFilter
-              selectedDate={selectedDate}
-              onDateChange={handleDateChange}
-              onClear={handleClearDate}
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
+            <div className="flex-1 w-full">
+              <OrderDateFilter
+                selectedDate={selectedDate}
+                onDateChange={handleDateChange}
+                onClear={handleClearDate}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="sm:hidden w-full"
+              onClick={() => setShowMonthlyGenerator(!showMonthlyGenerator)}
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Monatsrechnungen
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="sm:hidden w-full"
-            onClick={() => setShowMonthlyGenerator(!showMonthlyGenerator)}
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            Monatsrechnungen
-          </Button>
+
+          {/* Customer Search */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by customer name…"
+              value={customerSearch}
+              onChange={e => handleSearchChange(e.target.value)}
+              className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+            />
+            {customerSearch && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Active search banner */}
+          {debouncedSearch && (
+            <p className="text-xs text-blue-600 font-medium flex items-center gap-1">
+              <Search className="h-3 w-3" />
+              Showing all orders for "<span className="font-semibold">{debouncedSearch}</span>"
+            </p>
+          )}
         </div>
       </div>
 
