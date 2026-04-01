@@ -10,6 +10,8 @@ import type { OrderItem, OrderDiscount } from '../../../../types/order';
 interface OrderItemsProps {
   items: OrderItem[];
   discount?: OrderDiscount;
+  customerId?: string;
+  customerName?: string;
   onUpdateItem: (index: number, updates: Partial<OrderItem>) => void;
   onAddItem: (product: any) => void;
   onRemoveItem: (index: number) => void;
@@ -19,6 +21,8 @@ interface OrderItemsProps {
 export function OrderItems({
   items,
   discount,
+  customerId,
+  customerName,
   onUpdateItem,
   onAddItem,
   onRemoveItem,
@@ -135,6 +139,8 @@ export function OrderItems({
                       key={actualIndex}
                       item={item}
                       actualIndex={actualIndex}
+                      customerId={customerId}
+                      customerName={customerName}
                       onPackToggle={handlePackToggle}
                       onUpdateItem={onUpdateItem}
                       onRemoveItem={onRemoveItem}
@@ -195,6 +201,8 @@ export function OrderItems({
                       key={actualIndex}
                       item={item}
                       actualIndex={actualIndex}
+                      customerId={customerId}
+                      customerName={customerName}
                       onPackToggle={handlePackToggle}
                       onUpdateItem={onUpdateItem}
                       onRemoveItem={onRemoveItem}
@@ -219,6 +227,8 @@ export function OrderItems({
 interface OrderItemCardProps {
   item: OrderItem;
   actualIndex: number;
+  customerId?: string;
+  customerName?: string;
   onPackToggle: (index: number, currentStatus: boolean) => void;
   onUpdateItem: (index: number, updates: Partial<OrderItem>) => void;
   onRemoveItem: (index: number) => void;
@@ -227,6 +237,8 @@ interface OrderItemCardProps {
 function OrderItemCard({
   item,
   actualIndex,
+  customerId,
+  customerName,
   onPackToggle,
   onUpdateItem,
   onRemoveItem,
@@ -323,6 +335,10 @@ function OrderItemCard({
               onChange={(value) =>
                 onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value })
               }
+              isVK={true}
+              productId={item.product.artikelNr}
+              customerId={customerId}
+              customerName={customerName}
             />
           </div>
         </div>

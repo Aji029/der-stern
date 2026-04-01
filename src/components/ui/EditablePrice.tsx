@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PriceHistoryPopup } from './PriceHistoryPopup';
 import { usePriceHistory } from '../../hooks/usePriceHistory';
+import { useCustomerProductPrice } from '../../hooks/useCustomerProductPrice';
 
 interface EditablePriceProps {
   value: number;
@@ -11,27 +12,44 @@ interface EditablePriceProps {
   onCancel?: () => void;
   label?: string;
   customerId?: string;
+  customerName?: string;
   productId?: string;
+  productDefaultVK?: number;
   isVK?: boolean;
   isLoading?: boolean;
 }
 
-export function EditablePrice({ 
-  value = 0, 
-  onChange, 
-  onCancel, 
+export function EditablePrice({
+  value = 0,
+  onChange,
+  onCancel,
   label,
   customerId,
+  customerName,
   productId,
+  productDefaultVK,
   isVK = false,
-  isLoading = false
+  isLoading = false,
 }: EditablePriceProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value.toString());
   const [showHistory, setShowHistory] = useState(false);
-  const { history, isLoading: isHistoryLoading } = usePriceHistory(productId || '');
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Price history (all orders for this product)
+  const { history, isLoading: isHistoryLoading } = usePriceHistory(productId || '');
+
+  // Customer-specific default VK (only when isVK + customer + product are provided)
+  const {
+    customVK,
+    isLoading: isCustomerVKLoading,
+    isSaving,
+    saveCustomVK,
+  } = useCustomerProductPrice(
+    isVK && customerId && productId ? customerId : undefined,
+    isVK && customerId && productId ? productId : undefined,
+  );
 
   useEffect(() => {
     setTempValue(value.toString());
@@ -50,7 +68,6 @@ export function EditablePrice({
         setShowHistory(false);
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -77,6 +94,22 @@ export function EditablePrice({
     }
   };
 
+  // Apply the customer default VK to the current field
+  const handleApplyCustomerVK = () => {
+    if (customVK !== null && customVK !== undefined) {
+      onChange(customVK);
+      setShowHistory(false);
+    }
+  };
+
+  // Save current value as customer default
+  const handleSaveAsCustomerVK = () => {
+    saveCustomVK(value);
+  };
+
+  // Show the popup toggle button only for VK fields with a productId
+  const showHistoryButton = isVK && productId;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-2">
@@ -93,14 +126,14 @@ export function EditablePrice({
           onClick={() => setIsEditing(true)}
         >
           <span className="font-medium">{formatPrice(value)}</span>
-          {isVK && productId && (
+          {showHistoryButton && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowHistory(!showHistory);
               }}
               className="ml-2 text-gray-400 group-hover:text-blue-600 transition-colors p-1"
-              title="View price history"
+              title="View price info & customer default"
             >
               <History className="h-5 w-5" />
             </button>
@@ -112,6 +145,13 @@ export function EditablePrice({
             history={history}
             isOpen={showHistory}
             onClose={() => setShowHistory(false)}
+            customerVK={customVK}
+            isCustomerVKLoading={isCustomerVKLoading}
+            isSaving={isSaving}
+            productVK={productDefaultVK}
+            customerName={customerName}
+            onApplyCustomerVK={customerId ? handleApplyCustomerVK : undefined}
+            onSaveAsCustomerVK={customerId ? handleSaveAsCustomerVK : undefined}
           />
         )}
       </div>

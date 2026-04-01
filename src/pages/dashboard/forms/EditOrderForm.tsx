@@ -60,6 +60,8 @@ export function EditOrderForm() {
       <OrderItems
         items={order.items}
         discount={order.discount}
+        customerId={order.customer.id}
+        customerName={order.customer.companyName}
         onUpdateItem={handleUpdateItem}
         onAddItem={handleAddItem}
         onRemoveItem={handleRemoveItem}

@@ -3,7 +3,8 @@ import { Trash2 } from 'lucide-react';
 import { Button } from '../../../../components/ui/Button';
 import { ProductSearchInput } from '../../../../components/search/ProductSearchInput';
 import { ProfitMarginDisplay } from '../../../../components/ProfitMarginDisplay';
-import { formatPrice } from '../../../../utils/priceCalculations';
+import { EditablePrice } from '../../../../components/ui/EditablePrice';
+import { supabase } from '../../../../lib/supabase';
 import type { OrderItem } from '../../types';
 
 interface OrderItemsProps {
@@ -11,10 +12,27 @@ interface OrderItemsProps {
   onChange: (items: OrderItem[]) => void;
   errors?: Record<string, string>;
   customerId?: string;
+  customerName?: string;
 }
 
-export function OrderItems({ items, onChange, errors = {}, customerId }: OrderItemsProps) {
-  const handleAddProduct = (product: any, quantity: number = 1) => {
+export function OrderItems({ items, onChange, errors = {}, customerId, customerName }: OrderItemsProps) {
+  const handleAddProduct = async (product: any, quantity: number = 1) => {
+    // Try to apply customer-specific default VK if a customer is selected
+    let vkPrice = product.vkPrice;
+    if (customerId) {
+      try {
+        const { data } = await supabase.rpc('get_customer_product_price', {
+          p_customer_id: customerId,
+          p_product_id: product.artikelNr,
+        });
+        if (data !== null && data !== undefined) {
+          vkPrice = data;
+        }
+      } catch {
+        // Silently fall back to product default
+      }
+    }
+
     const newItem: OrderItem = {
       product: {
         artikelNr: product.artikelNr,
@@ -24,8 +42,8 @@ export function OrderItems({ items, onChange, errors = {}, customerId }: OrderIt
       },
       quantity,
       ekPrice: product.ekPrice,
-      vkPrice: product.vkPrice,
-      total: quantity * product.vkPrice
+      vkPrice,
+      total: quantity * vkPrice
     };
     onChange([...items, newItem]);
   };
@@ -99,10 +117,21 @@ export function OrderItems({ items, onChange, errors = {}, customerId }: OrderIt
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price
+                  VK Price
                 </label>
-                <div className="px-3 py-2 border rounded-lg bg-gray-50">
-                  {formatPrice(item.vkPrice)}
+                <div className="ring-1 ring-yellow-300 rounded-xl">
+                  <EditablePrice
+                    value={item.vkPrice}
+                    onChange={(value) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...item, vkPrice: value, total: item.quantity * value };
+                      onChange(newItems);
+                    }}
+                    isVK={true}
+                    productId={item.product.artikelNr}
+                    customerId={customerId}
+                    customerName={customerName}
+                  />
                 </div>
               </div>
 
@@ -110,8 +139,8 @@ export function OrderItems({ items, onChange, errors = {}, customerId }: OrderIt
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Total
                 </label>
-                <div className="px-3 py-2 border rounded-lg bg-gray-50">
-                  {formatPrice(item.total)}
+                <div className="px-3 py-2 border rounded-lg bg-gray-50 min-h-[42px] flex items-center">
+                  {(item.quantity * item.vkPrice).toFixed(2)} €
                 </div>
               </div>
             </div>

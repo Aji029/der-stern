@@ -5,6 +5,7 @@ import { CustomerSelect } from './CustomerSelect';
 import { OrderItems } from './OrderItems';
 import { OrderDetails } from './OrderDetails';
 import { useOrderForm } from '../../hooks/useOrderForm';
+import { useCustomers } from '../../../../context/CustomerContext';
 
 export function OrderForm() {
   const navigate = useNavigate();
@@ -18,6 +19,9 @@ export function OrderForm() {
     handleItemsChange,
     handleDetailsChange,
   } = useOrderForm();
+  const { customers } = useCustomers();
+  const selectedCustomer = customers.find(c => c.id === formData.customerId);
+  const customerName = selectedCustomer?.companyName;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -35,6 +39,7 @@ export function OrderForm() {
           onChange={handleItemsChange}
           errors={errors}
           customerId={formData.customerId}
+          customerName={customerName}
         />
       </div>
 
