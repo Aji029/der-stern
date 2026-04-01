@@ -245,15 +245,15 @@ function OrderItemCard({
 }: OrderItemCardProps) {
   return (
     <div
-      className={`border rounded-lg p-3 transition-all ${
+      className={`border rounded-lg p-4 transition-all ${
         item.isPacked
           ? 'bg-green-50 border-green-300'
           : 'bg-white border-gray-200'
       }`}
     >
-      {/* Header: pack checkbox + product name */}
-      <div className="flex items-start gap-2 mb-2">
-        {/* 44px touch target */}
+      {/* Header: pack checkbox + product info + supplier on the right */}
+      <div className="flex items-start gap-2 mb-3">
+        {/* 44px touch target pack button */}
         <button
           onClick={() => onPackToggle(actualIndex, item.isPacked || false)}
           className="flex-shrink-0 w-11 h-11 rounded-xl border-2 flex items-center justify-center transition-all active:scale-95"
@@ -265,8 +265,9 @@ function OrderItemCard({
           {item.isPacked && <Check className="w-5 h-5 text-white" />}
         </button>
 
+        {/* Product name + badges — fills remaining space */}
         <div className="flex-1 min-w-0 pt-1">
-          <div className="font-medium text-gray-900 text-sm leading-tight truncate">
+          <div className="font-medium text-gray-900 text-sm leading-tight">
             {item.product.name}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 mt-1">
@@ -283,27 +284,25 @@ function OrderItemCard({
             )}
           </div>
         </div>
+
+        {/* Supplier — pushed to the right of the header */}
+        <div className="flex-shrink-0 flex items-center gap-1.5 pt-1">
+          <span className="text-[11px] font-medium text-gray-400 hidden sm:inline">Supplier</span>
+          <SupplierSelect
+            value={item.product.supplierId || ''}
+            onChange={(supplierId) =>
+              onUpdateItem(actualIndex, { product: { ...item.product, supplierId } })
+            }
+            className="text-xs py-1 px-2"
+          />
+        </div>
       </div>
 
-      {/* Supplier — compact single line, smaller text */}
-      <div className="flex items-center gap-2 mb-2">
-        <label className="text-[11px] font-medium text-gray-400 w-12 flex-shrink-0">
-          Supplier
-        </label>
-        <SupplierSelect
-          value={item.product.supplierId || ''}
-          onChange={(supplierId) =>
-            onUpdateItem(actualIndex, { product: { ...item.product, supplierId } })
-          }
-          className="text-xs py-1 px-2"
-        />
-      </div>
-
-      {/* Qty · EK · VK */}
-      <div className="flex items-start gap-2 mb-2">
-        {/* Qty — slightly wider + taller */}
-        <div className="w-24 flex-shrink-0">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Qty</label>
+      {/* 4-column field row: Quantity | EK Price | VK Price | Total */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+        {/* Quantity */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Quantity</label>
           <input
             type="number"
             min="0"
@@ -313,22 +312,22 @@ function OrderItemCard({
               const quantity = parseFloat(e.target.value) || 0;
               onUpdateItem(actualIndex, { quantity, total: quantity * item.vkPrice });
             }}
-            className="w-full px-2 py-2.5 text-base font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-center"
+            className="w-full px-3 py-2.5 text-base font-semibold text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-center min-h-[48px]"
           />
         </div>
 
-        {/* EK — de-emphasised */}
-        <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-400 mb-1">EK</label>
+        {/* EK Price — de-emphasised */}
+        <div>
+          <label className="block text-[11px] font-medium text-gray-400 mb-1">EK Price</label>
           <EditablePrice
             value={item.ekPrice}
             onChange={(value) => onUpdateItem(actualIndex, { ekPrice: value })}
           />
         </div>
 
-        {/* VK — primary edit target */}
-        <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-700 mb-1">VK</label>
+        {/* VK Price — primary, yellow ring */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">VK Price</label>
           <div className="ring-1 ring-yellow-300 rounded-xl">
             <EditablePrice
               value={item.vkPrice}
@@ -342,21 +341,24 @@ function OrderItemCard({
             />
           </div>
         </div>
+
+        {/* Total — read-only */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Total</label>
+          <div className="px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-sm font-semibold text-gray-800 min-h-[48px] flex items-center">
+            {formatPrice(item.total || item.quantity * item.vkPrice)}
+          </div>
+        </div>
       </div>
 
-      {/* Footer: margin + total + remove */}
+      {/* Footer: margin % on left, Remove on right */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <ProfitMarginDisplay
-            ekPrice={item.ekPrice}
-            vkPrice={item.vkPrice}
-            mwst={item.product.mwst}
-            showMwst={false}
-          />
-          <span className="text-sm font-semibold text-gray-900">
-            {formatPrice(item.total || item.quantity * item.vkPrice)}
-          </span>
-        </div>
+        <ProfitMarginDisplay
+          ekPrice={item.ekPrice}
+          vkPrice={item.vkPrice}
+          mwst={item.product.mwst}
+          showMwst={false}
+        />
         <button
           onClick={() => onRemoveItem(actualIndex)}
           className="px-2.5 py-1 bg-red-50 text-red-500 text-xs font-medium rounded-lg hover:bg-red-100 active:scale-95 transition-all border border-red-100"
