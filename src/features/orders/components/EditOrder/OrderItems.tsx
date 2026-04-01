@@ -251,7 +251,7 @@ function OrderItemCard({
           : 'bg-white border-gray-200'
       }`}
     >
-      {/* Header: pack checkbox + product info + supplier on the right */}
+      {/* Header: pack checkbox + product info + supplier (responsive) */}
       <div className="flex items-start gap-2 mb-3">
         {/* 44px touch target pack button */}
         <button
@@ -265,36 +265,52 @@ function OrderItemCard({
           {item.isPacked && <Check className="w-5 h-5 text-white" />}
         </button>
 
-        {/* Product name + badges — fills remaining space */}
-        <div className="flex-1 min-w-0 pt-1">
-          <div className="font-medium text-gray-900 text-sm leading-tight">
-            {item.product.name}
+        {/* Product info + supplier — stacked on mobile, side-by-side on sm+ */}
+        <div className="flex-1 min-w-0">
+          {/* Top sub-row: product name + badges | supplier (desktop only, pushed right) */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="pt-1 min-w-0 flex-1">
+              <div className="font-medium text-gray-900 text-sm leading-tight">
+                {item.product.name}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 mt-1">
+                <span className="px-1.5 py-0.5 bg-gray-100 rounded font-medium">
+                  {item.product.artikelNr}
+                </span>
+                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">
+                  {item.product.mwst === 'A' ? '7%' : '19%'}
+                </span>
+                {item.isPacked && (
+                  <span className="px-1.5 py-0.5 bg-green-600 text-white rounded font-medium text-[10px]">
+                    ✓ Packed
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Supplier — desktop/tablet only (≥640px), stays top-right */}
+            <div className="hidden sm:flex flex-shrink-0 items-center gap-1.5 pt-1">
+              <span className="text-[11px] font-medium text-gray-400">Supplier</span>
+              <SupplierSelect
+                value={item.product.supplierId || ''}
+                onChange={(supplierId) =>
+                  onUpdateItem(actualIndex, { product: { ...item.product, supplierId } })
+                }
+                className="text-xs py-1 px-2"
+              />
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 mt-1">
-            <span className="px-1.5 py-0.5 bg-gray-100 rounded font-medium">
-              {item.product.artikelNr}
-            </span>
-            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">
-              {item.product.mwst === 'A' ? '7%' : '19%'}
-            </span>
-            {item.isPacked && (
-              <span className="px-1.5 py-0.5 bg-green-600 text-white rounded font-medium text-[10px]">
-                ✓ Packed
-              </span>
-            )}
-          </div>
-        </div>
 
-        {/* Supplier — pushed to the right of the header */}
-        <div className="flex-shrink-0 flex items-center gap-1.5 pt-1">
-          <span className="text-[11px] font-medium text-gray-400 hidden sm:inline">Supplier</span>
-          <SupplierSelect
-            value={item.product.supplierId || ''}
-            onChange={(supplierId) =>
-              onUpdateItem(actualIndex, { product: { ...item.product, supplierId } })
-            }
-            className="text-xs py-1 px-2"
-          />
+          {/* Supplier — mobile only (<640px), own row below product info */}
+          <div className="sm:hidden mt-2 flex items-center gap-2">
+            <span className="text-[11px] font-medium text-gray-400 flex-shrink-0">Supplier</span>
+            <SupplierSelect
+              value={item.product.supplierId || ''}
+              onChange={(supplierId) =>
+                onUpdateItem(actualIndex, { product: { ...item.product, supplierId } })
+              }
+              className="text-xs py-1 px-2 w-full"
+            />
+          </div>
         </div>
       </div>
 
