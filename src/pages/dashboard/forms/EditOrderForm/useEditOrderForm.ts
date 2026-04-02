@@ -6,12 +6,18 @@ import type { OrderFormData } from '../AddOrderForm/types';
 
 export function useEditOrderForm(orderId: string) {
   const navigate = useNavigate();
-  const { getOrder, updateOrder } = useOrders();
+  const { getOrder, updateOrder, isLoading: ordersLoading } = useOrders();
   const [formData, setFormData] = useState<OrderFormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    // Wait until OrderContext has finished loading before deciding whether the
+    // order exists. Without this guard, a full page reload (e.g. iOS tab kill
+    // on phone lock) starts with orders = [] and immediately redirects to the
+    // Orders list even though the order is perfectly valid.
+    if (ordersLoading) return;
+
     const order = getOrder(orderId);
     if (order) {
       setFormData({
@@ -26,7 +32,7 @@ export function useEditOrderForm(orderId: string) {
     } else {
       navigate('/dashboard/orders');
     }
-  }, [orderId, getOrder, navigate]);
+  }, [orderId, getOrder, navigate, ordersLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
