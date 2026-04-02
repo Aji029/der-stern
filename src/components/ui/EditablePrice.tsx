@@ -159,27 +159,27 @@ export function EditablePrice({
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center space-x-2">
-        <input
-          ref={inputRef}
-          type="number"
-          step="0.01"
-          min="0"
-          value={tempValue}
-          onChange={(e) => setTempValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1 px-4 py-3 text-base border-2 border-blue-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[48px]"
-        />
+    <div className="flex flex-col gap-1.5">
+      <input
+        ref={inputRef}
+        type="number"
+        step="0.01"
+        min="0"
+        value={tempValue}
+        onChange={(e) => setTempValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="w-full px-4 py-3 text-base border-2 border-blue-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[48px]"
+      />
+      <div className="flex gap-1.5">
         <button
           onClick={handleSave}
-          className="p-3 text-white bg-green-600 hover:bg-green-700 rounded-xl active:scale-95 transition-all min-h-[48px] min-w-[48px] flex items-center justify-center"
+          className="flex-1 py-2 text-white bg-green-600 hover:bg-green-700 rounded-xl active:scale-95 transition-all min-h-[40px] flex items-center justify-center"
         >
           <Check className="h-5 w-5" />
         </button>
         <button
           onClick={handleCancel}
-          className="p-3 text-white bg-red-600 hover:bg-red-700 rounded-xl active:scale-95 transition-all min-h-[48px] min-w-[48px] flex items-center justify-center"
+          className="flex-1 py-2 text-white bg-red-600 hover:bg-red-700 rounded-xl active:scale-95 transition-all min-h-[40px] flex items-center justify-center"
         >
           <X className="h-5 w-5" />
         </button>
