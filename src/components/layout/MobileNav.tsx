@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { X, Bot } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { navigation } from './DashboardLayout';
 
@@ -8,9 +8,10 @@ interface MobileNavProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
+  onOpenAI: () => void;
 }
 
-export function MobileNav({ isOpen, onClose, onLogout }: MobileNavProps) {
+export function MobileNav({ isOpen, onClose, onLogout, onOpenAI }: MobileNavProps) {
   const location = useLocation();
 
   if (!isOpen) return null;
@@ -32,7 +33,7 @@ export function MobileNav({ isOpen, onClose, onLogout }: MobileNavProps) {
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
-              
+
               return (
                 <Link
                   key={item.name}
@@ -49,6 +50,15 @@ export function MobileNav({ isOpen, onClose, onLogout }: MobileNavProps) {
                 </Link>
               );
             })}
+
+            {/* AI Assistant */}
+            <button
+              onClick={() => { onOpenAI(); onClose(); }}
+              className="flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-700 hover:bg-gray-50"
+            >
+              <Bot className="h-5 w-5 mr-3 flex-shrink-0" />
+              AI Assistant
+            </button>
           </nav>
 
           <div className="border-t p-4">

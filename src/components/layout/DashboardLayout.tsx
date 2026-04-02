@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { AIAssistantButton, AIAssistantPanel, useAIAssistant } from '../../features/aiAssistant';
+import { AIAssistantPanel, useAIAssistant } from '../../features/aiAssistant';
 import {
   LayoutDashboard,
   Package,
@@ -16,7 +16,8 @@ import {
   Calendar,
   Menu,
   FileText,
-  PackageCheck
+  PackageCheck,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
@@ -108,6 +109,23 @@ export function DashboardLayout() {
                     </Link>
                   );
                 })}
+
+                {/* AI Assistant — opens overlay panel, styled identical to nav items */}
+                <button
+                  onClick={openAI}
+                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    isAIOpen
+                      ? 'bg-yellow-50 text-yellow-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Bot className="w-5 h-5 flex-shrink-0" />
+                  <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${
+                    isCollapsed ? 'opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto' : 'opacity-100 w-auto'
+                  }`}>
+                    AI Assistant
+                  </span>
+                </button>
               </nav>
             </div>
 
@@ -143,6 +161,7 @@ export function DashboardLayout() {
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
           onLogout={handleLogout}
+          onOpenAI={openAI}
         />
 
         {/* Main content */}
@@ -189,8 +208,7 @@ export function DashboardLayout() {
       {/* Bottom tab bar — mobile/tablet only */}
       <BottomTabBar onMorePress={() => setIsMobileMenuOpen(true)} />
 
-      {/* AI Assistant floating button + panel */}
-      <AIAssistantButton onClick={openAI} isLoading={aiLoading} />
+      {/* AI Assistant panel overlay */}
       {isAIOpen && (
         <AIAssistantPanel
           messages={messages}
