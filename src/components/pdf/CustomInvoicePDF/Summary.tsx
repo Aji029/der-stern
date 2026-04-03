@@ -106,8 +106,8 @@ export function Summary({ items }: SummaryProps) {
       <View style={styles.table}>
         {/* Header Row */}
         <View style={styles.headerRow}>
-          <Text style={styles.headerDescriptionCell}>Description</Text>
-          <Text style={styles.headerCell}>Amount</Text>
+          <Text style={styles.headerDescriptionCell}>Beschreibung</Text>
+          <Text style={styles.headerCell}>Betrag</Text>
         </View>
 
         {/* Nettobetrag Rows */}

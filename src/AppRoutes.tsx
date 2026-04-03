@@ -24,6 +24,7 @@ const AddOrderForm = lazy(() => import('./pages/dashboard/forms/AddOrderForm').t
 const EditOrderForm = lazy(() => import('./pages/dashboard/forms/EditOrderForm').then(m => ({ default: m.EditOrderForm })));
 const SupplierProductsPage = lazy(() => import('./pages/dashboard/SupplierProductsPage').then(m => ({ default: m.SupplierProductsPage })));
 const FulfillmentPage = lazy(() => import('./pages/dashboard/FulfillmentPage').then(m => ({ default: m.FulfillmentPage })));
+const ERechenungPage = lazy(() => import('./pages/dashboard/ERechenungPage').then(m => ({ default: m.ERechenungPage })));
 
 function PageLoader() {
   return (
@@ -65,6 +66,7 @@ export function AppRoutes() {
         <Route path="reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
         <Route path="todays-pick" element={<Suspense fallback={<PageLoader />}><TodaysPickPage /></Suspense>} />
         <Route path="fulfillment" element={<Suspense fallback={<PageLoader />}><FulfillmentPage /></Suspense>} />
+        <Route path="erechnung" element={<Suspense fallback={<PageLoader />}><ERechenungPage /></Suspense>} />
       </Route>
 
       {/* Root Redirect */}

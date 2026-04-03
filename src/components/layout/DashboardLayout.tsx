@@ -17,7 +17,8 @@ import {
   Menu,
   FileText,
   PackageCheck,
-  Bot
+  Bot,
+  Receipt
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
@@ -33,6 +34,7 @@ export const navigation = [
   { name: 'Suppliers', href: '/dashboard/suppliers', icon: Factory },
   { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
   { name: 'Sammelrechnungen', href: '/dashboard/sammelrechnungen', icon: FileText },
+  { name: 'E-Rechnung', href: '/dashboard/erechnung', icon: Receipt },
   { name: "Today's Pick", href: '/dashboard/todays-pick', icon: Calendar },
   { name: 'Fulfillment', href: '/dashboard/fulfillment', icon: PackageCheck },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart },
