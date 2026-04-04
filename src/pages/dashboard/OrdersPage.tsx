@@ -198,6 +198,7 @@ export function OrdersPage() {
           isLoading={isLoading}
           error={error}
           statusFilter={activeTab}
+          onRefresh={loadOrders}
         />
 
         {/* Pagination */}

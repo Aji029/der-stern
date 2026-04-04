@@ -18,24 +18,35 @@ interface OrderListProps {
   isLoading: boolean;
   error: string | null;
   statusFilter?: OrderStatusFilter;
+  onRefresh?: () => void;
 }
 
-export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: OrderListProps) {
+export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRefresh }: OrderListProps) {
   const navigate = useNavigate();
   const { refreshOrders } = useOrders();
   const [completing, setCompleting] = useState<Set<string>>(new Set());
+  const [optimisticCompleted, setOptimisticCompleted] = useState<Set<string>>(new Set());
 
   const handleMarkCompleted = async (orderId: string) => {
     if (completing.has(orderId)) return;
+    // Instant optimistic removal — order disappears immediately
+    setOptimisticCompleted(prev => new Set(prev).add(orderId));
     setCompleting(prev => new Set(prev).add(orderId));
     try {
       await supabase
         .from('orders')
         .update({ status: 'Completed', updated_at: new Date().toISOString() })
         .eq('id', orderId);
-      await refreshOrders();
+      onRefresh?.();          // re-fetch paginated list in parent (background)
+      await refreshOrders();  // sync OrderContext counts
     } catch (err) {
       console.error('Failed to update order status:', err);
+      // Rollback — order reappears on failure
+      setOptimisticCompleted(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
     } finally {
       setCompleting(prev => {
         const next = new Set(prev);
@@ -44,6 +55,9 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
       });
     }
   };
+
+  // Filter out orders that have been optimistically marked as completed
+  const visibleOrders = orders.filter(o => !optimisticCompleted.has(o.id));
 
   if (isLoading) {
     return (
@@ -65,7 +79,7 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
     );
   }
 
-  if (orders.length === 0) {
+  if (visibleOrders.length === 0) {
     const emptyMessages = {
       pending: {
         title: 'No pending orders',
@@ -122,7 +136,7 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {orders.map((order) => (
+            {visibleOrders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {order.id}
@@ -201,7 +215,7 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3 p-3">
-        {orders.map((order) => (
+        {visibleOrders.map((order) => (
           <div
             key={order.id}
             className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm"
