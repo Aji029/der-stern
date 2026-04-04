@@ -12,6 +12,6 @@ export const SELLER = {
   taxId: '35/398/01172',
   /** IBAN without spaces */
   iban: 'DE20100900005785987014',
-  /** BIC of the bank — please verify this matches your bank */
-  bic: 'DEUTDEDBBER',
+  /** BIC of the bank */
+  bic: 'BEVODEBB',
 };
