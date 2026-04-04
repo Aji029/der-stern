@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Order } from '../types/order';
 
@@ -15,6 +15,9 @@ interface OrdersState {
 }
 
 export function useOrdersWithPagination(pageSize: number = 10) {
+  // Track the latest fetch so stale concurrent responses are discarded
+  const fetchIdRef = useRef(0);
+
   const [state, setState] = useState<OrdersState>({
     orders: [],
     totalPages: 1,
@@ -31,6 +34,9 @@ export function useOrdersWithPagination(pageSize: number = 10) {
     statusFilter: OrderStatusFilter = 'pending',
     customerSearch?: string
   ) => {
+    // Claim a unique ID for this fetch — any older in-flight fetch is now stale
+    const myFetchId = ++fetchIdRef.current;
+
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -224,6 +230,9 @@ export function useOrdersWithPagination(pageSize: number = 10) {
         updated_at: order.updated_at ? new Date(order.updated_at) : undefined
       }));
 
+      // Discard stale responses — only the latest fetch may update state
+      if (myFetchId !== fetchIdRef.current) return;
+
       setState({
         orders: transformedOrders,
         totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
@@ -235,6 +244,7 @@ export function useOrdersWithPagination(pageSize: number = 10) {
       });
     } catch (err: any) {
       console.error('Error fetching orders:', err);
+      if (myFetchId !== fetchIdRef.current) return;
       setState(prev => ({
         ...prev,
         orders: [],

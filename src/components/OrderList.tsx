@@ -5,6 +5,8 @@ import { Button } from './ui/Button';
 import { InvoiceButton } from './InvoiceButton';
 import { CustomInvoiceButton } from './CustomInvoiceButton';
 import { DeliveryNoteButton } from './DeliveryNoteButton';
+import { ToastContainer } from './ui/Toast';
+import { useToast } from '../hooks/useToast';
 import { formatPrice } from '../utils/priceCalculations';
 import { formatDateForDisplay } from '../utils/dateFormatting';
 import { supabase } from '../lib/supabase';
@@ -24,35 +26,44 @@ interface OrderListProps {
 export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRefresh }: OrderListProps) {
   const navigate = useNavigate();
   const { refreshOrders } = useOrders();
+  const toast = useToast();
   const [completing, setCompleting] = useState<Set<string>>(new Set());
+  const [fadingOut, setFadingOut] = useState<Set<string>>(new Set());
   const [optimisticCompleted, setOptimisticCompleted] = useState<Set<string>>(new Set());
 
   const handleMarkCompleted = async (orderId: string) => {
     if (completing.has(orderId)) return;
-    // Instant optimistic removal — order disappears immediately
-    setOptimisticCompleted(prev => new Set(prev).add(orderId));
+
+    // Immediately start fade-out animation
+    setFadingOut(prev => new Set(prev).add(orderId));
     setCompleting(prev => new Set(prev).add(orderId));
+
     try {
-      await supabase
-        .from('orders')
-        .update({ status: 'Completed', updated_at: new Date().toISOString() })
-        .eq('id', orderId);
-      onRefresh?.();          // re-fetch paginated list in parent (background)
-      await refreshOrders();  // sync OrderContext counts
+      // Run Supabase update and wait for animation in parallel
+      await Promise.all([
+        supabase
+          .from('orders')
+          .update({ status: 'Completed', updated_at: new Date().toISOString() })
+          .eq('id', orderId),
+        new Promise(resolve => setTimeout(resolve, 350)), // let animation finish
+      ]);
+
+      // Remove from DOM and show success feedback
+      setOptimisticCompleted(prev => new Set(prev).add(orderId));
+      setFadingOut(prev => { const n = new Set(prev); n.delete(orderId); return n; });
+      toast.success('Bestellung als abgeschlossen markiert');
+
+      // Refresh data in background (race-condition-safe now)
+      onRefresh?.();
+      await refreshOrders();
+
     } catch (err) {
       console.error('Failed to update order status:', err);
-      // Rollback — order reappears on failure
-      setOptimisticCompleted(prev => {
-        const next = new Set(prev);
-        next.delete(orderId);
-        return next;
-      });
+      // Rollback — fade the row back in
+      setFadingOut(prev => { const n = new Set(prev); n.delete(orderId); return n; });
+      toast.error('Fehler beim Aktualisieren der Bestellung');
     } finally {
-      setCompleting(prev => {
-        const next = new Set(prev);
-        next.delete(orderId);
-        return next;
-      });
+      setCompleting(prev => { const n = new Set(prev); n.delete(orderId); return n; });
     }
   };
 
@@ -137,7 +148,14 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {visibleOrders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+              <tr
+                key={order.id}
+                className="hover:bg-gray-50"
+                style={{
+                  transition: 'opacity 0.3s ease',
+                  opacity: fadingOut.has(order.id) ? 0 : 1,
+                }}
+              >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {order.id}
                 </td>
@@ -219,6 +237,11 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
           <div
             key={order.id}
             className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm"
+            style={{
+              transition: 'opacity 0.3s ease, transform 0.3s ease',
+              opacity: fadingOut.has(order.id) ? 0 : 1,
+              transform: fadingOut.has(order.id) ? 'translateX(-12px) scale(0.98)' : 'none',
+            }}
           >
             {/* Header */}
             <div className="flex justify-between items-start">
@@ -296,6 +319,8 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
           </div>
         ))}
       </div>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </>
   );
 }
