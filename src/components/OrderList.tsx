@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil as Edit, Banknote, Loader } from 'lucide-react';
+import { Pencil as Edit, Banknote, Loader, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { InvoiceButton } from './InvoiceButton';
 import { CustomInvoiceButton } from './CustomInvoiceButton';
 import { DeliveryNoteButton } from './DeliveryNoteButton';
 import { formatPrice } from '../utils/priceCalculations';
 import { formatDateForDisplay } from '../utils/dateFormatting';
+import { supabase } from '../lib/supabase';
+import { useOrders } from '../context/OrderContext';
 import type { Order } from '../types/order';
 
 type OrderStatusFilter = 'pending' | 'completed' | 'all';
@@ -20,6 +22,28 @@ interface OrderListProps {
 
 export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: OrderListProps) {
   const navigate = useNavigate();
+  const { refreshOrders } = useOrders();
+  const [completing, setCompleting] = useState<Set<string>>(new Set());
+
+  const handleMarkCompleted = async (orderId: string) => {
+    if (completing.has(orderId)) return;
+    setCompleting(prev => new Set(prev).add(orderId));
+    try {
+      await supabase
+        .from('orders')
+        .update({ status: 'Completed', updated_at: new Date().toISOString() })
+        .eq('id', orderId);
+      await refreshOrders();
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+    } finally {
+      setCompleting(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -123,17 +147,32 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
                   {formatPrice(order.totalAmount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    order.status === 'Completed'
-                      ? 'bg-green-100 text-green-800'
-                      : order.status === 'Processing'
-                      ? 'bg-blue-100 text-blue-800'
-                      : order.status === 'Cancelled'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {order.status}
-                  </span>
+                  {(order.status === 'Pending' || order.status === 'Processing') ? (
+                    <button
+                      onClick={() => handleMarkCompleted(order.id)}
+                      disabled={completing.has(order.id)}
+                      title="Als Abgeschlossen markieren"
+                      className={`group inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full transition-all cursor-pointer hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${
+                        order.status === 'Processing'
+                          ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                      }`}
+                    >
+                      {completing.has(order.id)
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      }
+                      {order.status}
+                    </button>
+                  ) : (
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      order.status === 'Completed'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
@@ -177,17 +216,32 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all' }: Or
                   {order.customer.contactPerson}
                 </div>
               </div>
-              <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
-                order.status === 'Completed'
-                  ? 'bg-green-100 text-green-800'
-                  : order.status === 'Processing'
-                  ? 'bg-blue-100 text-blue-800'
-                  : order.status === 'Cancelled'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {order.status}
-              </span>
+              {(order.status === 'Pending' || order.status === 'Processing') ? (
+                <button
+                  onClick={() => handleMarkCompleted(order.id)}
+                  disabled={completing.has(order.id)}
+                  title="Als Abgeschlossen markieren"
+                  className={`ml-2 group inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all cursor-pointer active:scale-95 disabled:opacity-60 ${
+                    order.status === 'Processing'
+                      ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                  }`}
+                >
+                  {completing.has(order.id)
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : <CheckCircle2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  }
+                  {order.status}
+                </button>
+              ) : (
+                <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
+                  order.status === 'Completed'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {order.status}
+                </span>
+              )}
             </div>
 
             {/* Details */}
