@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, Package, Users, Factory, ArrowRight } from 'lucide-react';
+import { DollarSign, Package, Users, Factory, ArrowRight, ClipboardList, CheckCircle2, Circle } from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
+import { useSuppliers } from '../../context/SupplierContext';
 import { supabase } from '../../lib/supabase';
 import { formatPrice } from '../../utils/priceCalculations';
+import { formatDateForInput, formatDateForDisplay } from '../../utils/dateFormatting';
+import { useTodaysPick } from './hooks/useTodaysPick';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
 
 interface DayRevenue {
   label: string;
@@ -13,6 +17,8 @@ interface DayRevenue {
 
 export function DashboardPage() {
   const { orders } = useOrders();
+  const { suppliers } = useSuppliers();
+  const today = formatDateForInput(new Date());
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [salesData, setSalesData] = useState<DayRevenue[]>([]);
   const [salesRange, setSalesRange] = useState<'7' | '30'>('7');
@@ -70,6 +76,20 @@ export function DashboardPage() {
         setSalesData(result);
       });
   }, [salesRange]);
+
+  // ── Today's Pick widget data ────────────────────────────────────────────────
+  const { groupedOrders: todayGroups } = useTodaysPick(today);
+  const [pickedArr] = useLocalStorage<string[]>(`der-stern-picked-${today}`, []);
+  const pickedToday = useMemo(() => new Set(pickedArr), [pickedArr]);
+
+  const totalPickItems = todayGroups.reduce((s, g) => s + g.items.length, 0);
+  const totalPickedItems = todayGroups.reduce(
+    (s, g) => s + g.items.filter(i => i.product?.artikelNr && pickedToday.has(i.product.artikelNr)).length,
+    0
+  );
+  const pickPct = totalPickItems > 0 ? Math.round((totalPickedItems / totalPickItems) * 100) : 0;
+  const allPickDone = totalPickItems > 0 && totalPickedItems === totalPickItems;
+  // ────────────────────────────────────────────────────────────────────────────
 
   const statCards = [
     {
@@ -208,6 +228,97 @@ export function DashboardPage() {
             );
           })()}
         </div>
+      </div>
+
+      {/* ── Today's Pick Overview ─────────────────────────────────────────── */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-50 rounded-lg">
+              <ClipboardList className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Today's Pick</h3>
+              <p className="text-xs text-gray-500">{formatDateForDisplay(today)}</p>
+            </div>
+          </div>
+          <Link
+            to="/dashboard/todays-pick"
+            className="inline-flex items-center text-sm font-medium text-yellow-600 hover:text-yellow-700"
+          >
+            View Picks
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        </div>
+
+        {todayGroups.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No items to pick today.</p>
+        ) : (
+          <div className="space-y-4">
+            {/* Overall progress bar */}
+            {allPickDone ? (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <p className="text-sm font-semibold text-green-700">
+                  🎉 All {totalPickItems} items picked for today!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{totalPickedItems} / {totalPickItems} items picked</span>
+                  <span className="font-medium">{pickPct}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-2 bg-green-500 rounded-full transition-all duration-300"
+                    style={{ width: `${pickPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Per-supplier rows */}
+            <div className="divide-y divide-gray-100">
+              {todayGroups.map(group => {
+                const supplierPickedCount = group.items.filter(
+                  i => i.product?.artikelNr && pickedToday.has(i.product.artikelNr)
+                ).length;
+                const supplierTotal = group.items.length;
+                const isComplete = supplierPickedCount === supplierTotal && supplierTotal > 0;
+                const hasStarted = supplierPickedCount > 0;
+
+                return (
+                  <div key={group.supplierId} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isComplete ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      ) : hasStarted ? (
+                        <div className="h-4 w-4 rounded-full border-2 border-amber-400 flex-shrink-0" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                      )}
+                      <span className={`text-sm font-medium truncate ${isComplete ? 'text-green-700' : 'text-gray-700'}`}>
+                        {group.supplierName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        isComplete
+                          ? 'bg-green-100 text-green-700'
+                          : hasStarted
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {isComplete ? '✓ Complete' : hasStarted ? `${supplierPickedCount}/${supplierTotal}` : `${supplierTotal} items`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

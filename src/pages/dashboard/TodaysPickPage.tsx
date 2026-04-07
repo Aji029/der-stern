@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Calendar, Filter } from 'lucide-react';
 import { TodaysPickList } from './components/TodaysPick/TodaysPickList';
 import { useTodaysPick } from './hooks/useTodaysPick';
+import { usePickedItems } from './hooks/usePickedItems';
 import { useSuppliers } from '../../context/SupplierContext';
 import { formatDateForInput } from '../../utils/dateFormatting';
 
@@ -11,6 +12,8 @@ export function TodaysPickPage() {
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const { groupedOrders, isLoading, error } = useTodaysPick(selectedDate);
   const { suppliers } = useSuppliers();
+  const { pickedItems, toggleItem, markAllForSupplier, unmarkAllForSupplier, clearAll } =
+    usePickedItems(selectedDate);
 
   const filteredOrders = useMemo(() => {
     if (selectedSuppliers.length === 0) {
@@ -67,6 +70,12 @@ export function TodaysPickPage() {
             {groupedOrders.map(order => {
               const supplier = suppliers.find(s => s.id === order.supplierId);
               const isSelected = selectedSuppliers.includes(order.supplierId);
+              // Show pick progress on each chip
+              const pickedCount = order.items.filter(
+                item => item.product?.artikelNr && pickedItems.has(item.product.artikelNr)
+              ).length;
+              const totalCount = order.items.length;
+              const isComplete = pickedCount === totalCount && totalCount > 0;
               return (
                 <button
                   key={order.supplierId}
@@ -74,11 +83,16 @@ export function TodaysPickPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-sm'
+                      : isComplete
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
+                  {isComplete && <span className="mr-1">✓</span>}
                   {supplier?.companyName || order.supplierName}
-                  <span className="ml-2 text-xs opacity-75">({order.items.length})</span>
+                  <span className="ml-2 text-xs opacity-75">
+                    {pickedCount > 0 ? `(${pickedCount}/${totalCount})` : `(${totalCount})`}
+                  </span>
                 </button>
               );
             })}
@@ -91,6 +105,11 @@ export function TodaysPickPage() {
         selectedDate={selectedDate}
         isLoading={isLoading}
         error={error}
+        pickedItems={pickedItems}
+        onToggleItem={toggleItem}
+        onMarkAllForSupplier={markAllForSupplier}
+        onUnmarkAllForSupplier={unmarkAllForSupplier}
+        onClearAll={clearAll}
       />
     </div>
   );
