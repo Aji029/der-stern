@@ -11,15 +11,15 @@ export interface GroupedOrders {
 }
 
 export function useTodaysPick(selectedDate: string) {
-  const { orders } = useOrders();
+  // Derive loading state from the data source — avoids the "empty flash" before
+  // OrderContext finishes its Supabase fetch when orders is still []
+  const { orders, isLoading: ordersLoading } = useOrders();
   const { suppliers } = useSuppliers();
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      setIsLoading(true);
       setError(null);
 
       // Filter orders for the selected date and non-completed orders
@@ -79,14 +79,12 @@ export function useTodaysPick(selectedDate: string) {
     } catch (err: any) {
       console.error('Error processing orders:', err);
       setError(err.message);
-    } finally {
-      setIsLoading(false);
     }
   }, [orders, suppliers, selectedDate]);
 
   return {
     groupedOrders,
-    isLoading,
+    isLoading: ordersLoading,
     error,
   };
 }
