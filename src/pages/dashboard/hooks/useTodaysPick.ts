@@ -34,7 +34,8 @@ export function useTodaysPick(selectedDate: string) {
 
       dateOrders.forEach(order => {
         order.items.forEach(item => {
-          if (!item.product.supplierId) return;
+          // Guard: product JOIN can return null if the product was deleted after the order was placed
+          if (!item.product || !item.product.supplierId) return;
 
           const supplier = suppliers.find(s => s.id === item.product.supplierId);
           if (!supplier) return;
@@ -66,12 +67,13 @@ export function useTodaysPick(selectedDate: string) {
       });
 
       // Sort suppliers by name and sort items within each supplier by name
+      // Use nullish coalescing to guard against null/undefined names (e.g. deleted supplier or product)
       const sortedGroups = Array.from(supplierGroups.values())
-        .sort((a, b) => a.supplierName.localeCompare(b.supplierName))
+        .sort((a, b) => (a.supplierName ?? '').localeCompare(b.supplierName ?? ''))
         .map(group => ({
           ...group,
-          items: group.items.sort((a, b) => 
-            a.product.name.localeCompare(b.product.name)
+          items: group.items.sort((a, b) =>
+            (a.product?.name ?? '').localeCompare(b.product?.name ?? '')
           ),
         }));
 

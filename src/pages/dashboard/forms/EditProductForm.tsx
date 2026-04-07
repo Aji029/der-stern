@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
-import { Upload, Loader, ArrowLeft } from 'lucide-react';
+import { Upload, Loader, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useProducts } from '../../../context/ProductContext';
 import { useSuppliers } from '../../../context/SupplierContext';
 import { ProductFormFields } from './components/ProductFormFields';
@@ -28,7 +28,7 @@ const INITIAL_FORM_DATA = {
 export function EditProductForm() {
   const navigate = useNavigate();
   const { artikelNr } = useParams();
-  const { getProduct, updateProduct, isLoading } = useProducts();
+  const { getProduct, updateProduct, products, isLoading } = useProducts();
   const { suppliers } = useSuppliers();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +67,20 @@ export function EditProductForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!artikelNr) return;
+    setError(null);
+
+    // --- Duplicate product name check (excluding the current product being edited) ---
+    const normalizedName = formData.name.trim().toLowerCase();
+    const existingByName = products.find(
+      p => p.name.trim().toLowerCase() === normalizedName && p.artikelNr !== artikelNr
+    );
+    if (existingByName) {
+      setError(
+        `A product named "${existingByName.name}" already exists (Art. Nr: ${existingByName.artikelNr}). ` +
+        `Please use a different product name.`
+      );
+      return;
+    }
 
     try {
       const productData = {
@@ -85,20 +99,8 @@ export function EditProductForm() {
     }
   };
 
-  if (error) {
-    return (
-      <div className="max-w-2xl mx-auto mt-8 p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-600">{error}</p>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard/products')}
-          className="mt-4"
-        >
-          Back to Products
-        </Button>
-      </div>
-    );
-  }
+  // Hard errors (e.g., product not found) keep the old full-page error view
+  // Soft errors (duplicates, update failure) are shown inline inside the form
 
   if (isLoading) {
     return (
@@ -137,6 +139,14 @@ export function EditProductForm() {
             onImageChange={handleImageChange}
           />
         </div>
+
+        {/* Duplicate / submit error banner */}
+        {error && (
+          <div className="flex items-start gap-3 bg-red-50 border border-red-300 rounded-lg p-4">
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700 font-medium">{error}</p>
+          </div>
+        )}
 
         <div className="flex justify-end space-x-4">
           <Button
