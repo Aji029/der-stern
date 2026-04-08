@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { DollarSign, Package, Users, Factory, ArrowRight, ClipboardList, CheckCircle2, Circle } from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
-import { useSuppliers } from '../../context/SupplierContext';
 import { supabase } from '../../lib/supabase';
 import { formatPrice } from '../../utils/priceCalculations';
 import { formatDateForInput, formatDateForDisplay } from '../../utils/dateFormatting';
@@ -17,7 +16,6 @@ interface DayRevenue {
 
 export function DashboardPage() {
   const { orders } = useOrders();
-  const { suppliers } = useSuppliers();
   const today = formatDateForInput(new Date());
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [salesData, setSalesData] = useState<DayRevenue[]>([]);

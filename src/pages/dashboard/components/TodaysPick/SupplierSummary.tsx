@@ -14,7 +14,10 @@ interface SupplierSummaryProps {
 }
 
 export function SupplierSummary({ totals, title = "Supplier Summary:", className = "" }: SupplierSummaryProps) {
-  const margin = ((totals.totalVK - totals.totalEK) / totals.totalEK * 100).toFixed(2);
+  // Guard against division by zero when totalEK is 0 (e.g. products with no EK price)
+  const margin = totals.totalEK > 0
+    ? ((totals.totalVK - totals.totalEK) / totals.totalEK * 100).toFixed(2)
+    : '0.00';
 
   return (
     <div className={`${className}`}>

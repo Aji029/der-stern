@@ -43,7 +43,11 @@ export function TodaysPickPage() {
           <input
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => {
+              // Clamp: never allow a date beyond today (max attr bypassed by typing on desktop/mobile)
+              const chosen = e.target.value;
+              setSelectedDate(chosen > today ? today : chosen);
+            }}
             max={today}
             className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
           />
