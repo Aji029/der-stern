@@ -44,8 +44,10 @@ export function TodaysPickPage() {
             type="date"
             value={selectedDate}
             onChange={(e) => {
-              // Clamp: never allow a date beyond today (max attr bypassed by typing on desktop/mobile)
               const chosen = e.target.value;
+              // Guard: some mobile browsers fire onChange("") while the picker is open/scrolling
+              if (!chosen) return;
+              // Clamp: never allow a date beyond today (max attr bypassed by typing on desktop/mobile)
               setSelectedDate(chosen > today ? today : chosen);
             }}
             max={today}

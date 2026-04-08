@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { OrderItem } from '../../../types/order';
 
 /**
@@ -8,45 +8,68 @@ import type { OrderItem } from '../../../types/order';
  *  - resets automatically when the date changes (different key)
  *  - requires zero network calls
  *
- * NOTE: Uses direct useState + useEffect instead of useLocalStorage because
- * React's useState initializer only runs ONCE on mount — useLocalStorage does
- * NOT re-read from storage when the key prop changes between renders.
+ * Design notes:
+ *  - Uses useState + useEffect instead of useLocalStorage because React's
+ *    useState initializer only runs ONCE on mount — useLocalStorage does NOT
+ *    re-read from storage when the key changes between renders.
+ *  - The write effect uses a ref for the storageKey (NOT a dep) so it never
+ *    closes over a stale key. Without this, changing the date would write the
+ *    OLD date's picks into the NEW date's localStorage slot before the read
+ *    effect corrected the state, causing stale data and potential render loops.
+ *  - The read effect skips the initial mount because the useState lazy
+ *    initializer already loaded the correct value for the initial storageKey.
  */
 export function usePickedItems(selectedDate: string) {
   const storageKey = `der-stern-picked-${selectedDate}`;
 
-  // Read initial value from localStorage for the current date
+  // Always keep a ref in sync with the current storageKey.
+  // The write effect reads from this ref instead of closing over storageKey
+  // directly — this prevents writing OLD picks to a NEW date's slot when the
+  // date changes and pickedArr hasn't updated yet.
+  const storageKeyRef = useRef(storageKey);
+  storageKeyRef.current = storageKey;
+
+  // Read initial value from localStorage for the current (mount-time) date.
   const [pickedArr, setPickedArr] = useState<string[]>(() => {
     try {
-      const item = window.localStorage.getItem(storageKey);
-      const parsed = item ? JSON.parse(item) : [];
+      const stored = window.localStorage.getItem(storageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
   });
 
+  // Skip the read effect on the very first mount: the useState initializer
+  // already loaded the correct value for the initial storageKey, so running
+  // the effect immediately would just cause an unnecessary extra re-render.
+  const isFirstMount = useRef(true);
+
   // When selectedDate changes → re-read from localStorage for the new date key.
-  // This is the critical fix: useState initializer only runs once on mount, so
-  // a key change requires an explicit useEffect to sync state with the new key.
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     try {
-      const item = window.localStorage.getItem(storageKey);
-      const parsed = item ? JSON.parse(item) : [];
+      const stored = window.localStorage.getItem(storageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
       setPickedArr(Array.isArray(parsed) ? parsed : []);
     } catch {
       setPickedArr([]);
     }
   }, [storageKey]);
 
-  // Keep localStorage in sync whenever the array changes
+  // Persist picks to localStorage whenever the array changes.
+  // Intentionally depends ONLY on pickedArr (not storageKey) — the ref is used
+  // for the key so this effect does not fire prematurely when the date changes.
   useEffect(() => {
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(pickedArr));
+      window.localStorage.setItem(storageKeyRef.current, JSON.stringify(pickedArr));
     } catch {
       // localStorage unavailable (private mode, quota exceeded, etc.) — silently ignore
     }
-  }, [storageKey, pickedArr]);
+  }, [pickedArr]); // ← no storageKey dep; ref handles the current key
 
   // Set for O(1) lookups during render — rebuilt only when the stored array changes
   const pickedItems = useMemo(() => new Set(pickedArr), [pickedArr]);
