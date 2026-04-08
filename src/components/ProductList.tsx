@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ProfitMarginDisplay } from './ProfitMarginDisplay';
+import { EditableEKPrice } from './ui/EditableEKPrice';
 import { formatPrice } from '../utils/priceCalculations';
+import { useEKPriceUpdate } from '../hooks/useEKPriceUpdate';
 import type { Product } from '../types/product';
 
 interface ProductListProps {
@@ -13,14 +15,15 @@ interface ProductListProps {
   onToggleSelect: (product: Product) => void;
 }
 
-export function ProductList({ 
-  products, 
-  onDelete, 
+export function ProductList({
+  products,
+  onDelete,
   selectedProducts,
-  onToggleSelect 
+  onToggleSelect
 }: ProductListProps) {
   const navigate = useNavigate();
   const selectedProductIds = new Set(selectedProducts.map(p => p.artikelNr));
+  const { updatePriceAndOrders } = useEKPriceUpdate();
 
   if (products.length === 0) {
     return (
@@ -99,7 +102,13 @@ export function ProductList({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                  {formatPrice(product.ekPrice)}
+                  <div className="flex justify-end">
+                    <EditableEKPrice
+                      value={product.ekPrice}
+                      artikelNr={product.artikelNr}
+                      onUpdate={(newPrice) => updatePriceAndOrders(product.artikelNr, newPrice)}
+                    />
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                   {formatPrice(product.vkPrice)}

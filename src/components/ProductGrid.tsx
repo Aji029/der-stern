@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { ProfitMarginDisplay } from './ProfitMarginDisplay';
+import { EditableEKPrice } from './ui/EditableEKPrice';
 import { formatPrice } from '../utils/priceCalculations';
+import { useEKPriceUpdate } from '../hooks/useEKPriceUpdate';
 import type { Product } from '../types/product';
 
 interface ProductGridProps {
@@ -13,14 +15,15 @@ interface ProductGridProps {
   onToggleSelect: (product: Product) => void;
 }
 
-export function ProductGrid({ 
-  products, 
-  onDelete, 
+export function ProductGrid({
+  products,
+  onDelete,
   selectedProducts,
-  onToggleSelect 
+  onToggleSelect
 }: ProductGridProps) {
   const navigate = useNavigate();
   const selectedProductIds = new Set(selectedProducts.map(p => p.artikelNr));
+  const { updatePriceAndOrders } = useEKPriceUpdate();
 
   if (products.length === 0) {
     return (
@@ -77,7 +80,11 @@ export function ProductGrid({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">EK Price</p>
-                <p className="font-medium">{formatPrice(product.ekPrice)}</p>
+                <EditableEKPrice
+                  value={product.ekPrice}
+                  artikelNr={product.artikelNr}
+                  onUpdate={(newPrice) => updatePriceAndOrders(product.artikelNr, newPrice)}
+                />
               </div>
               <div>
                 <p className="text-sm text-gray-500">VK Price</p>

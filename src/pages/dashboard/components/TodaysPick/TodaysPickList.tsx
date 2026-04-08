@@ -351,10 +351,9 @@ export function TodaysPickList({
                         </div>
                       </div>
 
-                      {/* Right-side controls — hidden on mobile (admin fields not needed during picking),
-                           shown on lg+ where there is enough horizontal space */}
+                      {/* Right-side controls — supplier + EK price + qty */}
                       <div
-                        className="hidden lg:flex lg:items-center gap-6"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 lg:gap-6"
                         onClick={e => e.stopPropagation()}
                       >
                         <div className="w-48">

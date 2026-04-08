@@ -47,10 +47,8 @@ export function TodaysPickPage() {
               const chosen = e.target.value;
               // Guard: some mobile browsers fire onChange("") while the picker is open/scrolling
               if (!chosen) return;
-              // Clamp: never allow a date beyond today (max attr bypassed by typing on desktop/mobile)
-              setSelectedDate(chosen > today ? today : chosen);
+              setSelectedDate(chosen);
             }}
-            max={today}
             className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
           />
         </div>
