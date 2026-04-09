@@ -11,8 +11,8 @@ export async function updateEKPrice(artikelNr: string, newPrice: number): Promis
 }
 
 export function useEKPriceUpdate() {
-  const { patchEKPrice: patchOrderEKPrice, refreshOrders } = useOrders();
-  const { patchEKPrice: patchProductEKPrice, refreshProducts } = useProducts();
+  const { patchEKPrice: patchOrderEKPrice } = useOrders();
+  const { patchEKPrice: patchProductEKPrice } = useProducts();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,11 +62,15 @@ export function useEKPriceUpdate() {
         if (updateError) throw updateError;
       }
     } catch (error: any) {
-      // On failure revert by re-fetching the real data
-      await Promise.all([refreshOrders(), refreshProducts()]);
-      const handledError = supabase.handleError(error);
-      setError(handledError.message);
-      throw error;
+      // Do NOT call refreshOrders()/refreshProducts() here — that would revert the
+      // optimistic update and cause the price to flash back to the old value in the UI.
+      // Instead keep the optimistic state and surface the error so the user knows
+      // the DB save failed. They can refresh the page if they want to revert manually.
+      const handledError = supabase.handleError ? supabase.handleError(error) : error;
+      const message = handledError?.message || error?.message || 'Failed to update price';
+      setError(message);
+      console.error('EK price update failed:', message, error);
+      throw new Error(message);
     } finally {
       setIsUpdating(false);
     }

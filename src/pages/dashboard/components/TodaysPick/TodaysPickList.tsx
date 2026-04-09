@@ -356,7 +356,7 @@ export function TodaysPickList({
                         className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 lg:gap-6"
                         onClick={e => e.stopPropagation()}
                       >
-                        <div className="w-48">
+                        <div className="w-full lg:w-48">
                           <label className="block text-xs font-medium text-gray-500 mb-1">
                             Supplier
                           </label>
@@ -374,7 +374,7 @@ export function TodaysPickList({
                           </select>
                         </div>
 
-                        <div>
+                        <div className="w-full sm:w-auto">
                           <p className="text-xs font-medium text-gray-500 mb-1">EK Price</p>
                           <EditableEKPrice
                             value={item.ekPrice}
@@ -383,7 +383,7 @@ export function TodaysPickList({
                           />
                         </div>
 
-                        <div className="text-right min-w-[140px]">
+                        <div className="hidden lg:block text-right min-w-[140px]">
                           <p className={`font-bold text-lg ${isPicked ? 'text-gray-400' : 'text-gray-900'}`}>
                             Qty: {item.quantity.toFixed(2)}
                           </p>

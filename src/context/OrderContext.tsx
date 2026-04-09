@@ -291,7 +291,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     setOrders(prev => prev.map(order => ({
       ...order,
       items: order.items.map(item =>
-        item.product.artikelNr === artikelNr ? { ...item, ekPrice: newPrice } : item
+        item.product?.artikelNr === artikelNr ? { ...item, ekPrice: newPrice } : item
       )
     })));
   };
