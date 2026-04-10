@@ -9,6 +9,7 @@ interface ProductContextType {
   updateProduct: (artikelNr: string, product: Omit<Product, 'image'> & { image: File | null }) => Promise<void>;
   deleteProduct: (artikelNr: string) => Promise<void>;
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
+  patchVKPrice: (artikelNr: string, newPrice: number) => void;
   isLoading: boolean;
   error: string | null;
   refreshProducts: () => Promise<void>;
@@ -166,6 +167,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
+  const patchVKPrice = (artikelNr: string, newPrice: number) => {
+    setProducts(prev => prev.map(p =>
+      p.artikelNr === artikelNr ? { ...p, vkPrice: newPrice } : p
+    ));
+  };
+
   const deleteProduct = async (artikelNr: string) => {
     try {
       setIsLoading(true);
@@ -192,6 +199,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       updateProduct,
       deleteProduct,
       patchEKPrice,
+      patchVKPrice,
       isLoading,
       error,
       refreshProducts: loadProducts

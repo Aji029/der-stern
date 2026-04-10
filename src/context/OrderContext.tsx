@@ -13,6 +13,7 @@ interface OrderContextType {
   getOrder: (id: string) => Order | undefined;
   refreshOrders: () => Promise<void>;
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
+  patchVKPrice: (artikelNr: string, newPrice: number) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -296,6 +297,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     })));
   };
 
+  const patchVKPrice = (artikelNr: string, newPrice: number) => {
+    setOrders(prev => prev.map(order => ({
+      ...order,
+      items: order.items.map(item =>
+        item.product?.artikelNr === artikelNr
+          ? { ...item, vkPrice: newPrice, total: parseFloat((item.quantity * newPrice).toFixed(2)) }
+          : item
+      )
+    })));
+  };
+
   return (
     <OrderContext.Provider value={{
       orders,
@@ -306,7 +318,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       deleteOrder,
       getOrder,
       refreshOrders: fetchOrders,
-      patchEKPrice
+      patchEKPrice,
+      patchVKPrice
     }}>
       {children}
     </OrderContext.Provider>

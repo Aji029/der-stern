@@ -6,6 +6,7 @@ import { ProfitMarginDisplay } from './ProfitMarginDisplay';
 import { EditableEKPrice } from './ui/EditableEKPrice';
 import { formatPrice } from '../utils/priceCalculations';
 import { useEKPriceUpdate } from '../hooks/useEKPriceUpdate';
+import { useVKPriceUpdate } from '../hooks/useVKPriceUpdate';
 import type { Product } from '../types/product';
 
 interface ProductGridProps {
@@ -24,6 +25,7 @@ export function ProductGrid({
   const navigate = useNavigate();
   const selectedProductIds = new Set(selectedProducts.map(p => p.artikelNr));
   const { updatePriceAndOrders } = useEKPriceUpdate();
+  const { updateVKPriceAndOrders } = useVKPriceUpdate();
 
   if (products.length === 0) {
     return (
@@ -88,7 +90,11 @@ export function ProductGrid({
               </div>
               <div>
                 <p className="text-sm text-gray-500">VK Price</p>
-                <p className="font-medium">{formatPrice(product.vkPrice)}</p>
+                <EditableEKPrice
+                  value={product.vkPrice}
+                  artikelNr={product.artikelNr}
+                  onUpdate={(newPrice) => updateVKPriceAndOrders(product.artikelNr, newPrice)}
+                />
               </div>
             </div>
 

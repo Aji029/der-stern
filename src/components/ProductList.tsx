@@ -6,6 +6,7 @@ import { ProfitMarginDisplay } from './ProfitMarginDisplay';
 import { EditableEKPrice } from './ui/EditableEKPrice';
 import { formatPrice } from '../utils/priceCalculations';
 import { useEKPriceUpdate } from '../hooks/useEKPriceUpdate';
+import { useVKPriceUpdate } from '../hooks/useVKPriceUpdate';
 import type { Product } from '../types/product';
 
 interface ProductListProps {
@@ -24,6 +25,7 @@ export function ProductList({
   const navigate = useNavigate();
   const selectedProductIds = new Set(selectedProducts.map(p => p.artikelNr));
   const { updatePriceAndOrders } = useEKPriceUpdate();
+  const { updateVKPriceAndOrders } = useVKPriceUpdate();
 
   if (products.length === 0) {
     return (
@@ -111,7 +113,13 @@ export function ProductList({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                  {formatPrice(product.vkPrice)}
+                  <div className="flex justify-end">
+                    <EditableEKPrice
+                      value={product.vkPrice}
+                      artikelNr={product.artikelNr}
+                      onUpdate={(newPrice) => updateVKPriceAndOrders(product.artikelNr, newPrice)}
+                    />
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                   <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${

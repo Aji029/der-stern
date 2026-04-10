@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X } from 'lucide-react';
 import { Button } from './Button';
 import { formatPrice } from '../../utils/priceCalculations';
@@ -16,6 +16,16 @@ export function EditableEKPrice({ value, artikelNr, orderId, onUpdate }: Editabl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayValue, setDisplayValue] = useState(value);
+
+  // Sync displayValue and tempValue when the parent passes a new value
+  // (e.g. patchEKPrice from another page / realtime update).
+  // Guard: don't overwrite the user's in-progress typing.
+  useEffect(() => {
+    if (!isEditing) {
+      setDisplayValue(value);
+      setTempValue(value.toString());
+    }
+  }, [value, isEditing]);
 
   const handleSave = async () => {
     try {
