@@ -313,11 +313,11 @@ export function TodaysPickList({
                     key={`${item.product?.artikelNr}-${itemIndex}`}
                     onClick={() => item.product?.artikelNr && onToggleItem(item.product.artikelNr)}
                     className={`py-3 px-2 md:py-4 md:px-3 rounded-lg transition-all duration-200 border-b last:border-b-0 cursor-pointer select-none ${
-                      isPicked ? 'bg-green-50 opacity-75' : 'hover:bg-gray-50'
+                      isPicked ? 'bg-green-50' : 'hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                      <div className="flex items-start space-x-3 flex-1 min-w-0">
+                      <div className={`flex items-start space-x-3 flex-1 min-w-0 ${isPicked ? 'opacity-75' : ''}`}>
                         {/* Checkbox — stop propagation to prevent double-toggle from the row click */}
                         <div className="flex-shrink-0 pt-0.5" onClick={e => e.stopPropagation()}>
                           <input

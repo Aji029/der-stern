@@ -84,12 +84,17 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     // Subscribe to realtime changes
     const subscription = supabase
       .channel('products_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'products' 
-      }, (payload) => {
-        console.log('Received realtime update:', payload);
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, (payload) => {
+        // Incremental update — apply payload.new directly to avoid race with optimistic updates
+        const updated = payload.new as any;
+        setProducts(prev =>
+          prev.map(p => p.artikelNr === updated.artikel_nr ? mapProductFromDB(updated) : p)
+        );
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' }, () => {
+        loadProducts();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, () => {
         loadProducts();
       })
       .subscribe();
@@ -217,9 +222,9 @@ export function useProducts() {
   return context;
 }
 
-// Helper function to map database fields to frontend model
-function mapProductsFromDB(data: any[]): Product[] {
-  return data.map(item => ({
+// Helper function to map a single database row to the frontend model
+function mapProductFromDB(item: any): Product {
+  return {
     artikelNr: item.artikel_nr,
     name: item.name,
     vkPrice: parseFloat(item.vk_price),
@@ -231,6 +236,11 @@ function mapProductsFromDB(data: any[]): Product[] {
     supplierId: item.supplier_id,
     image: item.image_url,
     istBestand: item.ist_bestand || 0,
-    bestellnummer: item.bestellnummer
-  }));
+    bestellnummer: item.bestellnummer,
+  };
+}
+
+// Helper function to map database fields to frontend model
+function mapProductsFromDB(data: any[]): Product[] {
+  return data.map(mapProductFromDB);
 }

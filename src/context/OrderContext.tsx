@@ -122,9 +122,19 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       })
       .subscribe();
 
+    // Also listen to order_items — so EK/VK price writes are confirmed via re-fetch
+    const orderItemsSub = supabase
+      .channel('order_items_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+        if (debounce.timer) clearTimeout(debounce.timer);
+        debounce.timer = setTimeout(fetchOrders, 800);
+      })
+      .subscribe();
+
     return () => {
       if (debounce.timer) clearTimeout(debounce.timer);
       subscription.unsubscribe();
+      orderItemsSub.unsubscribe();
     };
   }, []);
 

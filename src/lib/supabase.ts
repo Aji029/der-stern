@@ -149,12 +149,16 @@ export const updatePriceDirectly = async (
   price: number,
   priceType: 'ek_price' | 'vk_price'
 ): Promise<void> => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('products')
     .update({ [priceType]: price })
-    .eq('artikel_nr', artikelNr);
+    .eq('artikel_nr', artikelNr)
+    .select('artikel_nr');
 
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`Price update failed: product "${artikelNr}" not found or access denied.`);
+  }
 };
 
 // Request queue for handling offline/online transitions
