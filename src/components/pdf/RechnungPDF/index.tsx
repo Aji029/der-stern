@@ -52,7 +52,7 @@ const S = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     borderTopWidth: 4,
-    borderTopColor: '#f59e0b',
+    borderTopColor: '#16a34a',
     paddingTop: 10,
     paddingBottom: 10,
     marginBottom: 4,
@@ -172,12 +172,11 @@ const S = StyleSheet.create({
   },
   td: { fontSize: 8.5, color: '#111827' },
 
-  // Column widths
+  // Column widths (Einh. removed, width redistributed to Bez + Menge)
   cPos:    { width: '5%' },
   cArt:    { width: '12%' },
-  cBez:    { width: '36%' },
-  cMenge:  { width: '8%',  textAlign: 'right' as const },
-  cEinh:   { width: '7%',  textAlign: 'center' as const },
+  cBez:    { width: '41%' },
+  cMenge:  { width: '10%', textAlign: 'right' as const },
   cEP:     { width: '14%', textAlign: 'right' as const },
   cGP:     { width: '13%', textAlign: 'right' as const },
   cMwst:   { width: '5%',  textAlign: 'center' as const },
@@ -362,7 +361,6 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
           <Text style={[S.th, S.cArt]}>Artikel</Text>
           <Text style={[S.th, S.cBez]}>Bezeichnung</Text>
           <Text style={[S.th, S.cMenge]}>Menge</Text>
-          <Text style={[S.th, S.cEinh]}>Einh.</Text>
           <Text style={[S.th, S.cEP]}>EP (€)</Text>
           <Text style={[S.th, S.cGP]}>GP (€)</Text>
           <Text style={[S.th, S.cMwst]}>%</Text>
@@ -377,7 +375,6 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
             <Text style={[S.td, S.cArt]}>{item.product.artikelNr}</Text>
             <Text style={[S.td, S.cBez]}>{item.product.name}</Text>
             <Text style={[S.td, S.cMenge]}>{fmt(item.quantity)}</Text>
-            <Text style={[S.td, S.cEinh]}>Stk</Text>
             <Text style={[S.td, S.cEP]}>{fmt(item.vkPrice)}</Text>
             <Text style={[S.td, S.cGP]}>{fmt(item.quantity * item.vkPrice)}</Text>
             <Text style={[S.td, S.cMwst]}>{item.product.mwst}</Text>
