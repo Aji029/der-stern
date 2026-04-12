@@ -1,5 +1,6 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import sternLogo from '../../../assets/stern-logo.jpg';
 import type { Order } from '../../../types/order';
 import { SELLER } from '../../../utils/zugferd/sellerInfo';
 
@@ -58,6 +59,12 @@ const S = StyleSheet.create({
     marginBottom: 4,
   },
   lhLeft: { flexDirection: 'column' },
+  logo: {
+    width: 90,
+    height: 50,
+    objectFit: 'contain' as const,
+    alignSelf: 'center' as const,
+  },
   companyName: {
     fontSize: 17,
     fontFamily: 'Helvetica-Bold',
@@ -308,6 +315,7 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
             </Text>
             <Text style={S.companySubline}>Steuernummer: {SELLER.taxId}</Text>
           </View>
+          <Image src={sternLogo} style={S.logo} />
         </View>
 
         <View style={S.divider} />
