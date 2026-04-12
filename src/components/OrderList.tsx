@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil as Edit, Banknote, Loader, Loader2, CheckCircle2 } from 'lucide-react';
+import { Pencil as Edit, Banknote, FileText, Loader, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { InvoiceButton } from './InvoiceButton';
 import { CustomInvoiceButton } from './CustomInvoiceButton';
 import { DeliveryNoteButton } from './DeliveryNoteButton';
+import { RechnungButton } from './RechnungButton';
 import { ToastContainer } from './ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { formatPrice } from '../utils/priceCalculations';
@@ -223,6 +224,12 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
                     >
                       <Banknote className="h-4 w-4" />
                     </CustomInvoiceButton>
+                    <RechnungButton
+                      order={order}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </RechnungButton>
                   </div>
                 </td>
               </tr>
@@ -315,6 +322,12 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
               >
                 <Banknote className="h-4 w-4" />
               </CustomInvoiceButton>
+              <RechnungButton
+                order={order}
+                className="text-blue-600 hover:text-blue-700"
+              >
+                <FileText className="h-4 w-4" />
+              </RechnungButton>
             </div>
           </div>
         ))}
