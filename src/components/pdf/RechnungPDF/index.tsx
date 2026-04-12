@@ -52,7 +52,7 @@ const S = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     borderTopWidth: 4,
-    borderTopColor: '#16a34a',
+    borderTopColor: '#D4D478',
     paddingTop: 10,
     paddingBottom: 10,
     marginBottom: 4,
@@ -361,8 +361,8 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
           <Text style={[S.th, S.cArt]}>Artikel</Text>
           <Text style={[S.th, S.cBez]}>Bezeichnung</Text>
           <Text style={[S.th, S.cMenge]}>Menge</Text>
-          <Text style={[S.th, S.cEP]}>EP (€)</Text>
-          <Text style={[S.th, S.cGP]}>GP (€)</Text>
+          <Text style={[S.th, S.cEP]}>EP</Text>
+          <Text style={[S.th, S.cGP]}>GP</Text>
           <Text style={[S.th, S.cMwst]}>%</Text>
         </View>
 
@@ -375,8 +375,8 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
             <Text style={[S.td, S.cArt]}>{item.product.artikelNr}</Text>
             <Text style={[S.td, S.cBez]}>{item.product.name}</Text>
             <Text style={[S.td, S.cMenge]}>{fmt(item.quantity)}</Text>
-            <Text style={[S.td, S.cEP]}>{fmt(item.vkPrice)}</Text>
-            <Text style={[S.td, S.cGP]}>{fmt(item.quantity * item.vkPrice)}</Text>
+            <Text style={[S.td, S.cEP]}>{fmtEur(item.vkPrice)}</Text>
+            <Text style={[S.td, S.cGP]}>{fmtEur(item.quantity * item.vkPrice)}</Text>
             <Text style={[S.td, S.cMwst]}>{item.product.mwst}</Text>
           </View>
         ))}
