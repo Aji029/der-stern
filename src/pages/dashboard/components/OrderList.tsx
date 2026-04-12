@@ -6,6 +6,7 @@ import { Pagination } from '../../../components/ui/Pagination';
 import { InvoiceButton } from '../../../components/InvoiceButton';
 import { CustomInvoiceButton } from '../../../components/CustomInvoiceButton';
 import { DeliveryNoteButton } from '../../../components/DeliveryNoteButton';
+import { RechnungButton } from '../../../components/RechnungButton';
 import { formatPrice } from '../../../utils/priceCalculations';
 import { formatDateForDisplay } from '../../../utils/dateFormatting';
 import type { Order } from '../../../types/order';
@@ -129,12 +130,18 @@ export function OrderList({
                         <Edit className="h-4 w-4" />
                       </Button>
                       <DeliveryNoteButton order={order} />
-                      <CustomInvoiceButton 
-                        order={order} 
+                      <CustomInvoiceButton
+                        order={order}
                         className="text-yellow-600 hover:text-yellow-700"
                       >
                         <FileText className="h-4 w-4" />
                       </CustomInvoiceButton>
+                      <RechnungButton
+                        order={order}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </RechnungButton>
                     </div>
                   </td>
                 </tr>
