@@ -430,7 +430,7 @@ export function RechnungPDF({ order, invoiceNumber }: Props) {
         <View style={S.payWrap}>
           <Text style={S.payTitle}>Zahlungsinformationen</Text>
           <Text style={S.payNote}>
-            Bitte überweisen Sie den Rechnungsbetrag Zahlbar sofort ohne Abzug, Die Ware bleibt bis zur vollständigen Bezahlung unser Eigentum.
+            Bitte überweisen Sie den Rechnungsbetrag zahlbar sofort ohne Abzug, Die Ware bleibt bis zur vollständigen Bezahlung unser Eigentum.
           </Text>
           <View style={S.payGrid}>
             <View style={S.payCol}>
