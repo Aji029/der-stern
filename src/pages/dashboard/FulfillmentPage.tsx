@@ -37,7 +37,7 @@ function PackingBar({ packed, total }: { packed: number; total: number }) {
 }
 
 export function FulfillmentPage() {
-  const { orders, updateOrder } = useOrders();
+  const { orders, patchPackedStatus } = useOrders();
   const [activeTab, setActiveTab] = useState<FilterTab>('to-pack');
   const [packingAll, setPackingAll] = useState<Set<string>>(new Set());
   const [togglingItem, setTogglingItem] = useState<Set<string>>(new Set());
@@ -86,7 +86,10 @@ export function FulfillmentPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const now = new Date().toISOString();
+      const packedAt = newPacked ? new Date() : undefined;
+      const packedBy = newPacked ? (user?.id ?? undefined) : undefined;
 
+      // 1. Update DB directly (only touches is_packed — no insert/delete cycle)
       await supabase
         .from('order_items')
         .update({
@@ -96,12 +99,8 @@ export function FulfillmentPage() {
         })
         .eq('id', item.id!);
 
-      const updatedItems = order.items.map(i =>
-        i.id === item.id
-          ? { ...i, isPacked: newPacked, packedAt: newPacked ? new Date() : undefined, packedBy: newPacked ? (user?.id ?? undefined) : undefined }
-          : i
-      );
-      await updateOrder(order.id, { ...order, items: updatedItems });
+      // 2. Optimistic local update — avoids re-inserting all items via updateOrder()
+      patchPackedStatus(order.id, [{ itemId: item.id!, isPacked: newPacked, packedAt, packedBy }]);
     } catch (err) {
       console.error('Toggle item failed:', err);
     } finally {
@@ -111,7 +110,7 @@ export function FulfillmentPage() {
         return next;
       });
     }
-  }, [togglingItem, updateOrder]);
+  }, [togglingItem, patchPackedStatus]);
 
   const handlePackAll = async (order: Order) => {
     if (packingAll.has(order.id)) return;
@@ -123,7 +122,10 @@ export function FulfillmentPage() {
 
       const { data: { user } } = await supabase.auth.getUser();
       const now = new Date().toISOString();
+      const packedAt = new Date();
+      const packedBy = user?.id ?? undefined;
 
+      // 1. Update DB directly for all unpacked items (no insert/delete cycle)
       await Promise.all(
         unpacked.map(item =>
           supabase
@@ -133,13 +135,11 @@ export function FulfillmentPage() {
         )
       );
 
-      const updatedItems = order.items.map(item => ({
-        ...item,
-        isPacked: true,
-        packedAt: item.isPacked ? item.packedAt : new Date(),
-        packedBy: item.isPacked ? item.packedBy : (user?.id ?? undefined),
-      }));
-      await updateOrder(order.id, { ...order, items: updatedItems });
+      // 2. Optimistic local update — no updateOrder() to avoid duplicating items
+      patchPackedStatus(
+        order.id,
+        unpacked.map(item => ({ itemId: item.id!, isPacked: true, packedAt, packedBy }))
+      );
     } catch (err) {
       console.error('Pack all failed:', err);
     } finally {

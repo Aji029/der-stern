@@ -14,6 +14,7 @@ interface OrderContextType {
   refreshOrders: () => Promise<void>;
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
   patchVKPrice: (artikelNr: string, newPrice: number) => void;
+  patchPackedStatus: (orderId: string, updates: Array<{ itemId: string; isPacked: boolean; packedAt?: Date; packedBy?: string }>) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -73,12 +74,15 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     )
   `;
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (silent = false) => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
     try {
-      setIsLoading(true);
+      // Only show the full-page spinner on the very first load.
+      // Background re-fetches (triggered by realtime subscriptions) run silently
+      // so the UI doesn't unmount/remount and scroll back to the top.
+      if (!silent) setIsLoading(true);
       setError(null);
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -118,7 +122,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       .channel('orders_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         if (debounce.timer) clearTimeout(debounce.timer);
-        debounce.timer = setTimeout(fetchOrders, 800);
+        debounce.timer = setTimeout(() => fetchOrders(true), 800);
       })
       .subscribe();
 
@@ -127,7 +131,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       .channel('order_items_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
         if (debounce.timer) clearTimeout(debounce.timer);
-        debounce.timer = setTimeout(fetchOrders, 800);
+        debounce.timer = setTimeout(() => fetchOrders(true), 800);
       })
       .subscribe();
 
@@ -318,6 +322,25 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     })));
   };
 
+  // Optimistic local-only update for packed status — used by FulfillmentPage
+  // so it doesn't need to call updateOrder() (which would re-insert all items).
+  const patchPackedStatus = (
+    orderId: string,
+    updates: Array<{ itemId: string; isPacked: boolean; packedAt?: Date; packedBy?: string }>
+  ) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        items: order.items.map(item => {
+          const u = updates.find(x => x.itemId === item.id);
+          if (!u) return item;
+          return { ...item, isPacked: u.isPacked, packedAt: u.packedAt, packedBy: u.packedBy };
+        }),
+      };
+    }));
+  };
+
   return (
     <OrderContext.Provider value={{
       orders,
@@ -329,7 +352,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       getOrder,
       refreshOrders: fetchOrders,
       patchEKPrice,
-      patchVKPrice
+      patchVKPrice,
+      patchPackedStatus,
     }}>
       {children}
     </OrderContext.Provider>

@@ -7,7 +7,6 @@ import { formatDateForDisplay } from '../../../../utils/dateFormatting';
 import { formatPrice } from '../../../../utils/priceCalculations';
 import { calculateSupplierTotals } from '../../../../utils/supplierCalculations';
 import { useEKPriceUpdate } from '../../../../hooks/useEKPriceUpdate';
-import { useVKPriceUpdate } from '../../../../hooks/useVKPriceUpdate';
 import { useSupplierUpdate } from '../../../../hooks/useSupplierUpdate';
 import { useSuppliers } from '../../../../context/SupplierContext';
 import { SupplierSummary } from './SupplierSummary';
@@ -51,7 +50,6 @@ export function TodaysPickList({
   onClearAll,
 }: TodaysPickListProps) {
   const { updatePriceAndOrders } = useEKPriceUpdate();
-  const { updateVKPriceAndOrders } = useVKPriceUpdate();
   const { updateSupplierAcrossOrders } = useSupplierUpdate();
   const { suppliers } = useSuppliers();
   const [activeScanSupplier, setActiveScanSupplier] = useState<{ id: string; name: string } | null>(null);
@@ -59,10 +57,6 @@ export function TodaysPickList({
   const handlePriceUpdate = useCallback(async (artikelNr: string, newPrice: number) => {
     await updatePriceAndOrders(artikelNr, newPrice);
   }, [updatePriceAndOrders]);
-
-  const handleVKPriceUpdate = useCallback(async (artikelNr: string, newPrice: number) => {
-    await updateVKPriceAndOrders(artikelNr, newPrice);
-  }, [updateVKPriceAndOrders]);
 
   const handleSupplierChange = async (artikelNr: string, newSupplierId: string) => {
     try {
@@ -386,15 +380,6 @@ export function TodaysPickList({
                             value={item.ekPrice}
                             artikelNr={item.product?.artikelNr || ''}
                             onUpdate={(newPrice) => handlePriceUpdate(item.product?.artikelNr || '', newPrice)}
-                          />
-                        </div>
-
-                        <div className="w-full sm:w-auto">
-                          <p className="text-xs font-medium text-gray-500 mb-1">VK Price</p>
-                          <EditableEKPrice
-                            value={item.vkPrice}
-                            artikelNr={item.product?.artikelNr || ''}
-                            onUpdate={(newPrice) => handleVKPriceUpdate(item.product?.artikelNr || '', newPrice)}
                           />
                         </div>
 
