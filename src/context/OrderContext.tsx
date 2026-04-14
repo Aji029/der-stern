@@ -15,6 +15,7 @@ interface OrderContextType {
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
   patchVKPrice: (artikelNr: string, newPrice: number) => void;
   patchPackedStatus: (orderId: string, updates: Array<{ itemId: string; isPacked: boolean; packedAt?: Date; packedBy?: string }>) => void;
+  patchOrderStatus: (orderId: string, status: Order['status']) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -322,6 +323,14 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     })));
   };
 
+  // Optimistic local-only update for order status — used by FulfillmentPage
+  // when all items are packed (Pending → Processing) or unpacked (Processing → Pending)
+  const patchOrderStatus = (orderId: string, status: Order['status']) => {
+    setOrders(prev => prev.map(order =>
+      order.id === orderId ? { ...order, status } : order
+    ));
+  };
+
   // Optimistic local-only update for packed status — used by FulfillmentPage
   // so it doesn't need to call updateOrder() (which would re-insert all items).
   const patchPackedStatus = (
@@ -354,6 +363,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       patchEKPrice,
       patchVKPrice,
       patchPackedStatus,
+      patchOrderStatus,
     }}>
       {children}
     </OrderContext.Provider>

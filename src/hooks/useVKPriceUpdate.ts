@@ -58,8 +58,7 @@ export function useVKPriceUpdate() {
       }
     } catch (err: any) {
       // Keep optimistic state — don't revert UI on DB error
-      const handledError = supabase.handleError ? supabase.handleError(err) : err;
-      const message = handledError?.message || err?.message || 'Failed to update VK price';
+      const message = err?.message || 'Failed to update VK price';
       setError(message);
       console.error('VK price update failed:', message, err);
       throw new Error(message);

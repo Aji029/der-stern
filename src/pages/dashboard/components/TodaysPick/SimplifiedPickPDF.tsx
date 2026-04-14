@@ -108,7 +108,7 @@ export function SimplifiedPickPDF({ groupedOrders, selectedDate, singleSupplier 
         </Text>
 
         {groupedOrders.map((group) => {
-          const totalEK = group.items.reduce((sum, item) => sum + (item.ekPrice * item.quantity), 0);
+          const totalEK = group.items.reduce((sum, item) => sum + ((item.ekPrice ?? 0) * item.quantity), 0);
           const totalQuantity = group.items.reduce((sum, item) => sum + item.quantity, 0);
 
           return (
@@ -125,10 +125,10 @@ export function SimplifiedPickPDF({ groupedOrders, selectedDate, singleSupplier 
                 </View>
 
                 {group.items.map((item, index) => (
-                  <View key={`${item.product.artikelNr}-${index}`} style={styles.tableRow}>
-                    <Text style={styles.colArticle}>{item.product.name}</Text>
+                  <View key={`${item.product?.artikelNr ?? index}-${index}`} style={styles.tableRow}>
+                    <Text style={styles.colArticle}>{item.product?.name ?? '(Product removed)'}</Text>
                     <Text style={styles.colQuantity}>{item.quantity.toFixed(2)}</Text>
-                    <Text style={styles.colPrice}>{formatPrice(item.ekPrice)}</Text>
+                    <Text style={styles.colPrice}>{formatPrice(item.ekPrice ?? 0)}</Text>
                   </View>
                 ))}
 

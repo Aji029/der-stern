@@ -14,6 +14,7 @@ import {
 import { useOrders } from '../../context/OrderContext';
 import { supabase } from '../../lib/supabase';
 import { Order, OrderItem } from '../../types/order';
+import { ToastContainer, ToastType } from '../../components/ui/Toast';
 
 type FilterTab = 'to-pack' | 'ready' | 'all';
 
@@ -37,11 +38,21 @@ function PackingBar({ packed, total }: { packed: number; total: number }) {
 }
 
 export function FulfillmentPage() {
-  const { orders, patchPackedStatus } = useOrders();
+  const { orders, patchPackedStatus, patchOrderStatus } = useOrders();
   const [activeTab, setActiveTab] = useState<FilterTab>('to-pack');
   const [packingAll, setPackingAll] = useState<Set<string>>(new Set());
   const [togglingItem, setTogglingItem] = useState<Set<string>>(new Set());
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+
+  const addToast = useCallback((message: string, type: ToastType) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   // Derive packing stats per order
   const enriched = useMemo(() => {
@@ -101,8 +112,25 @@ export function FulfillmentPage() {
 
       // 2. Optimistic local update — avoids re-inserting all items via updateOrder()
       patchPackedStatus(order.id, [{ itemId: item.id!, isPacked: newPacked, packedAt, packedBy }]);
-    } catch (err) {
+
+      // 3. Status transition: Pending ↔ Processing based on packing state
+      //    Compute whether ALL items will be packed after this toggle
+      const allPackedAfter = order.items.every(i =>
+        i.id === item.id ? newPacked : i.isPacked
+      );
+
+      if (newPacked && allPackedAfter && order.status === 'Pending') {
+        // All items now packed → promote order to Processing
+        await supabase.from('orders').update({ status: 'Processing' }).eq('id', order.id);
+        patchOrderStatus(order.id, 'Processing');
+      } else if (!newPacked && order.status === 'Processing') {
+        // Unpacking an item on a Processing order → revert to Pending
+        await supabase.from('orders').update({ status: 'Pending' }).eq('id', order.id);
+        patchOrderStatus(order.id, 'Pending');
+      }
+    } catch (err: any) {
       console.error('Toggle item failed:', err);
+      addToast(err?.message || 'Failed to update item — please try again', 'error');
     } finally {
       setTogglingItem(prev => {
         const next = new Set(prev);
@@ -110,7 +138,7 @@ export function FulfillmentPage() {
         return next;
       });
     }
-  }, [togglingItem, patchPackedStatus]);
+  }, [togglingItem, patchPackedStatus, patchOrderStatus, addToast]);
 
   const handlePackAll = async (order: Order) => {
     if (packingAll.has(order.id)) return;
@@ -140,8 +168,17 @@ export function FulfillmentPage() {
         order.id,
         unpacked.map(item => ({ itemId: item.id!, isPacked: true, packedAt, packedBy }))
       );
-    } catch (err) {
+
+      // 3. All items are now packed → promote order status to Processing
+      if (order.status === 'Pending') {
+        await supabase.from('orders').update({ status: 'Processing' }).eq('id', order.id);
+        patchOrderStatus(order.id, 'Processing');
+      }
+
+      addToast(`All items packed for order #${order.id}`, 'success');
+    } catch (err: any) {
       console.error('Pack all failed:', err);
+      addToast(err?.message || 'Pack All failed — please try again', 'error');
     } finally {
       setPackingAll(prev => {
         const next = new Set(prev);
@@ -533,6 +570,9 @@ export function FulfillmentPage() {
           </div>
         )}
       </div>
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

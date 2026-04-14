@@ -66,8 +66,7 @@ export function useEKPriceUpdate() {
       // optimistic update and cause the price to flash back to the old value in the UI.
       // Instead keep the optimistic state and surface the error so the user knows
       // the DB save failed. They can refresh the page if they want to revert manually.
-      const handledError = supabase.handleError ? supabase.handleError(error) : error;
-      const message = handledError?.message || error?.message || 'Failed to update price';
+      const message = error?.message || 'Failed to update price';
       setError(message);
       console.error('EK price update failed:', message, error);
       throw new Error(message);
