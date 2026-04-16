@@ -150,7 +150,10 @@ export function useOrdersWithPagination(pageSize: number = 10) {
             id,
             company_name,
             contact_person,
-            email
+            email,
+            id_number,
+            address,
+            billing_address
           ),
           items:order_items(
             id,
@@ -200,9 +203,9 @@ export function useOrdersWithPagination(pageSize: number = 10) {
           companyName: order.customer?.company_name || '',
           contactPerson: order.customer?.contact_person || '',
           email: order.customer?.email || '',
-          idNumber: '',
-          address: '',
-          billingAddress: ''
+          idNumber: order.customer?.id_number || '',
+          address: order.customer?.address || '',
+          billingAddress: order.customer?.billing_address || ''
         },
         items: (order.items || []).map((item: any) => ({
           id: item.id,

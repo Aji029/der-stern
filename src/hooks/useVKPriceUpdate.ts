@@ -5,7 +5,7 @@ import { useProducts } from '../context/ProductContext';
 
 export function useVKPriceUpdate() {
   const { patchVKPrice: patchOrderVKPrice } = useOrders();
-  const { patchVKPrice: patchProductVKPrice } = useProducts();
+  const { products, patchVKPrice: patchProductVKPrice } = useProducts();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,6 +13,9 @@ export function useVKPriceUpdate() {
     if (!artikelNr || typeof newPrice !== 'number' || newPrice < 0) {
       throw new Error('Invalid input parameters');
     }
+
+    // Capture original price so we can revert if DB write fails
+    const originalPrice = products.find(p => p.artikelNr === artikelNr)?.vkPrice ?? newPrice;
 
     // 1. Optimistic update — instant UI feedback across all pages
     patchOrderVKPrice(artikelNr, newPrice);
@@ -57,7 +60,9 @@ export function useVKPriceUpdate() {
         if (updateError) throw updateError;
       }
     } catch (err: any) {
-      // Keep optimistic state — don't revert UI on DB error
+      // DB write failed — revert the optimistic update so UI stays in sync with DB
+      patchOrderVKPrice(artikelNr, originalPrice);
+      patchProductVKPrice(artikelNr, originalPrice);
       const message = err?.message || 'Failed to update VK price';
       setError(message);
       console.error('VK price update failed:', message, err);

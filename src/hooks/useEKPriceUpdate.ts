@@ -12,11 +12,14 @@ export async function updateEKPrice(artikelNr: string, newPrice: number): Promis
 
 export function useEKPriceUpdate() {
   const { patchEKPrice: patchOrderEKPrice } = useOrders();
-  const { patchEKPrice: patchProductEKPrice } = useProducts();
+  const { products, patchEKPrice: patchProductEKPrice } = useProducts();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const updatePriceAndOrders = async (artikelNr: string, newPrice: number) => {
+    // Capture original price so we can revert if DB write fails
+    const originalPrice = products.find(p => p.artikelNr === artikelNr)?.ekPrice ?? newPrice;
+
     // 1. Optimistic update — instant UI feedback, no wait
     patchOrderEKPrice(artikelNr, newPrice);
     patchProductEKPrice(artikelNr, newPrice);
@@ -62,10 +65,9 @@ export function useEKPriceUpdate() {
         if (updateError) throw updateError;
       }
     } catch (error: any) {
-      // Do NOT call refreshOrders()/refreshProducts() here — that would revert the
-      // optimistic update and cause the price to flash back to the old value in the UI.
-      // Instead keep the optimistic state and surface the error so the user knows
-      // the DB save failed. They can refresh the page if they want to revert manually.
+      // DB write failed — revert the optimistic update so UI stays in sync with DB
+      patchOrderEKPrice(artikelNr, originalPrice);
+      patchProductEKPrice(artikelNr, originalPrice);
       const message = error?.message || 'Failed to update price';
       setError(message);
       console.error('EK price update failed:', message, error);
