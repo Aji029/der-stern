@@ -30,6 +30,11 @@ export const validatePrices = (ekPrice: number | undefined, vkPrice: number | un
   return null;
 };
 
+export const calculateProfitAmount = (ekPrice: number | undefined, vkPrice: number | undefined): number => {
+  if (!ekPrice || !vkPrice) return 0;
+  return vkPrice - ekPrice;
+};
+
 export const calculateOrderTotal = (items: Array<{ quantity: number; vkPrice: number }>): number => {
   return parseFloat(items.reduce((total, item) => {
     const itemTotal = parseFloat((item.quantity * item.vkPrice).toFixed(2));

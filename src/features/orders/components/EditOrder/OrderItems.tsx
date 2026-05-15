@@ -4,7 +4,8 @@ import { ProductSearchInput } from '../../../../components/search/ProductSearchI
 import { SupplierSelect } from '../../../../components/orders/SupplierSelect';
 import { EditablePrice } from '../../../../components/ui/EditablePrice';
 import { ProfitMarginDisplay } from '../../../../components/ProfitMarginDisplay';
-import { formatPrice } from '../../../../utils/priceCalculations';
+import { formatPrice, calculateProfitAmount } from '../../../../utils/priceCalculations';
+import { useVKPriceUpdate } from '../../../../hooks/useVKPriceUpdate';
 import type { OrderItem, OrderDiscount } from '../../../../types/order';
 
 interface OrderItemsProps {
@@ -68,21 +69,21 @@ export function OrderItems({
         </div>
 
         {/* Packing Progress — brand yellow */}
-        <div className="mb-3 p-2.5 bg-yellow-50 rounded-lg border border-yellow-200">
+        <div className="mb-3 p-2.5 bg-brand-50 rounded-lg border border-brand-200">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5">
-              <Package className="w-4 h-4 text-yellow-600" />
-              <span className="font-medium text-yellow-900 text-xs sm:text-sm">
+              <Package className="w-4 h-4 text-brand-600" />
+              <span className="font-medium text-brand-900 text-xs sm:text-sm">
                 Packing Progress
               </span>
             </div>
-            <span className="font-semibold text-yellow-700 text-sm">
+            <span className="font-semibold text-brand-700 text-sm">
               {packedCount}/{totalCount}
             </span>
           </div>
-          <div className="w-full bg-yellow-200 rounded-full h-1.5">
+          <div className="w-full bg-brand-200 rounded-full h-1.5">
             <div
-              className="bg-yellow-500 h-1.5 rounded-full transition-all duration-500"
+              className="bg-brand-500 h-1.5 rounded-full transition-all duration-500"
               style={{ width: `${totalCount > 0 ? (packedCount / totalCount) * 100 : 0}%` }}
             />
           </div>
@@ -94,7 +95,7 @@ export function OrderItems({
             onClick={() => setActiveTab('all')}
             className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all text-sm active:scale-95 ${
               activeTab === 'all'
-                ? 'bg-yellow-400 text-gray-900'
+                ? 'bg-brand-400 text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -125,7 +126,7 @@ export function OrderItems({
                 {unpackedCount > 0 && (
                   <button
                     onClick={handlePackAll}
-                    className="text-xs font-medium text-yellow-600 hover:text-yellow-700 active:scale-95"
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 active:scale-95"
                   >
                     Pack All
                   </button>
@@ -219,6 +220,19 @@ export function OrderItems({
             All items are packed!
           </div>
         )}
+
+        {items.length > 0 && (() => {
+          const totalProfit = items.reduce((sum, item) => {
+            return sum + calculateProfitAmount(item.ekPrice, item.vkPrice) * item.quantity;
+          }, 0);
+          const color = totalProfit > 0 ? 'text-green-600' : totalProfit < 0 ? 'text-red-600' : 'text-gray-500';
+          return (
+            <div className="flex justify-end items-center border-t border-gray-200 pt-3 mt-1">
+              <span className="text-sm font-medium text-gray-700 mr-3">Total Profit:</span>
+              <span className={`text-base font-bold ${color}`}>{formatPrice(totalProfit)}</span>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -243,6 +257,15 @@ function OrderItemCard({
   onUpdateItem,
   onRemoveItem,
 }: OrderItemCardProps) {
+  const { updateVKPriceAndOrders } = useVKPriceUpdate();
+
+  const handleVKChange = (value: number) => {
+    onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value });
+    if (item.product.artikelNr) {
+      updateVKPriceAndOrders(item.product.artikelNr, value).catch(console.error);
+    }
+  };
+
   return (
     <div
       className={`border rounded-lg p-4 transition-all ${
@@ -328,7 +351,7 @@ function OrderItemCard({
               const quantity = parseFloat(e.target.value) || 0;
               onUpdateItem(actualIndex, { quantity, total: quantity * item.vkPrice });
             }}
-            className="w-full px-3 py-2.5 text-base font-semibold text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-center min-h-[48px]"
+            className="w-full px-3 py-2.5 text-base font-semibold text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-brand-400 focus:border-transparent text-center min-h-[48px]"
           />
         </div>
 
@@ -344,12 +367,10 @@ function OrderItemCard({
         {/* VK Price — primary, yellow ring */}
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">VK Price</label>
-          <div className="ring-1 ring-yellow-300 rounded-xl">
+          <div className="ring-1 ring-brand-300 rounded-xl">
             <EditablePrice
               value={item.vkPrice}
-              onChange={(value) =>
-                onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value })
-              }
+              onChange={handleVKChange}
               isVK={true}
               productId={item.product.artikelNr}
               customerId={customerId}
@@ -367,14 +388,34 @@ function OrderItemCard({
         </div>
       </div>
 
-      {/* Footer: margin % on left, Remove on right */}
+      {/* Footer: margin % + profit amounts on left, Remove on right */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <ProfitMarginDisplay
-          ekPrice={item.ekPrice}
-          vkPrice={item.vkPrice}
-          mwst={item.product.mwst}
-          showMwst={false}
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <ProfitMarginDisplay
+            ekPrice={item.ekPrice}
+            vkPrice={item.vkPrice}
+            mwst={item.product.mwst}
+            showMwst={false}
+          />
+          {(() => {
+            const profitPerUnit = calculateProfitAmount(item.ekPrice, item.vkPrice);
+            const lineProfit = profitPerUnit * item.quantity;
+            const color = lineProfit > 0 ? 'text-green-600' : lineProfit < 0 ? 'text-red-600' : 'text-gray-500';
+            return (
+              <>
+                <span className="text-xs text-gray-400">|</span>
+                <div>
+                  <span className="text-[11px] text-gray-400 mr-1">Profit/Unit:</span>
+                  <span className={`text-xs font-semibold ${color}`}>{formatPrice(profitPerUnit)}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-gray-400 mr-1">Line:</span>
+                  <span className={`text-xs font-semibold ${color}`}>{formatPrice(lineProfit)}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
         <button
           onClick={() => onRemoveItem(actualIndex)}
           className="px-2.5 py-1 bg-red-50 text-red-500 text-xs font-medium rounded-lg hover:bg-red-100 active:scale-95 transition-all border border-red-100"
