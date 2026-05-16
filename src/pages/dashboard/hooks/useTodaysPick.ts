@@ -33,7 +33,7 @@ export function useTodaysPick(selectedDate: string) {
       const supplierGroups = new Map<string, GroupedOrders>();
 
       dateOrders.forEach(order => {
-        order.items.forEach(item => {
+        (order.items ?? []).forEach(item => {
           // Guard: product JOIN can return null if the product was deleted after the order was placed
           if (!item.product || !item.product.supplierId) return;
 
