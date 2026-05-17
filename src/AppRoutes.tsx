@@ -28,6 +28,7 @@ const EditOrderForm = lazy(() => import('./pages/dashboard/forms/EditOrderForm')
 const SupplierProductsPage = lazy(() => import('./pages/dashboard/SupplierProductsPage').then(m => ({ default: m.SupplierProductsPage })));
 const FulfillmentPage = lazy(() => import('./pages/dashboard/FulfillmentPage').then(m => ({ default: m.FulfillmentPage })));
 const ERechenungPage = lazy(() => import('./pages/dashboard/ERechenungPage').then(m => ({ default: m.ERechenungPage })));
+const OrderDetailsPage = lazy(() => import('./pages/dashboard/OrderDetailsPage').then(m => ({ default: m.OrderDetailsPage })));
 
 const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage').then(m => ({ default: m.PortalLoginPage })));
 const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage').then(m => ({ default: m.PortalHomePage })));
@@ -74,6 +75,7 @@ export function AppRoutes() {
         <Route path="suppliers/:supplierId/products" element={<Suspense fallback={<PageLoader />}><SupplierProductsPage /></Suspense>} />
         <Route path="orders" element={<Suspense fallback={<PageLoader />}><OrdersPage /></Suspense>} />
         <Route path="orders/new" element={<Suspense fallback={<PageLoader />}><AddOrderForm /></Suspense>} />
+        <Route path="orders/:id" element={<Suspense fallback={<PageLoader />}><OrderDetailsPage /></Suspense>} />
         <Route path="orders/:id/edit" element={<Suspense fallback={<PageLoader />}><EditOrderForm /></Suspense>} />
         <Route path="sammelrechnungen" element={<Suspense fallback={<PageLoader />}><SammelrechnungPage /></Suspense>} />
         <Route path="reports" element={<Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>} />
