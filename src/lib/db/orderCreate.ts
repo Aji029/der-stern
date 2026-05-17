@@ -37,6 +37,7 @@ export async function createOrder(order: Omit<Order, 'id'>): Promise<void> {
     const orderItems = order.items.map(item => ({
       order_id: orderData.id,
       product_id: item.product.artikelNr,
+      supplier_id: item.product.supplierId || null,
       quantity: item.quantity,
       ek_price: item.ekPrice,
       vk_price: item.vkPrice,
