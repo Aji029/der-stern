@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogIn, Star } from 'lucide-react';
+import { LogIn, Star, ChevronLeft } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -51,6 +51,12 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center mb-4">
+          <Link to="/" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
+            <ChevronLeft className="h-4 w-4" />
+            Back to home
+          </Link>
+        </div>
         <div className="flex justify-center">
           <Star className="h-12 w-12 text-brand-500" />
         </div>
