@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil as Edit, Eye, Banknote, FileText, Loader, Loader2, CheckCircle2 } from 'lucide-react';
+import { Pencil as Edit, Banknote, FileText, Loader, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { InvoiceButton } from './InvoiceButton';
 import { CustomInvoiceButton } from './CustomInvoiceButton';
@@ -212,15 +212,6 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/dashboard/orders/${order.id}`)}
-                      className="hover:bg-gray-50"
-                      title="View details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => navigate(`/dashboard/orders/${order.id}/edit`)}
                       className="hover:bg-gray-50"
                     >
@@ -315,15 +306,6 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/dashboard/orders/${order.id}`)}
-                className="flex-1"
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                View
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
