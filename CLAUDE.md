@@ -1,5 +1,16 @@
 # Der Stern — Project Guide
 
+## Rules
+
+**BEFORE deploying anything:**
+1. Run `npm run dev` and verify the change works in the browser at `http://localhost:5173`
+2. Run `npm run build` and confirm the build succeeds with no errors
+3. Only then push to `main` to trigger the Netlify deploy
+
+Never push to `main` without local testing first.
+
+---
+
 ## Deployment
 
 **Live site:** https://der-stern-dev.netlify.app  
