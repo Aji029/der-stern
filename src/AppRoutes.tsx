@@ -3,8 +3,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { LandingPage } from './pages/LandingPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { PortalLayout } from './components/layout/PortalLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { CustomerPortalRoute } from './components/CustomerPortalRoute';
 
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProductsPage = lazy(() => import('./pages/dashboard/ProductsPage').then(m => ({ default: m.ProductsPage })));
@@ -26,6 +29,13 @@ const SupplierProductsPage = lazy(() => import('./pages/dashboard/SupplierProduc
 const FulfillmentPage = lazy(() => import('./pages/dashboard/FulfillmentPage').then(m => ({ default: m.FulfillmentPage })));
 const ERechenungPage = lazy(() => import('./pages/dashboard/ERechenungPage').then(m => ({ default: m.ERechenungPage })));
 
+const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage').then(m => ({ default: m.PortalLoginPage })));
+const PortalHomePage = lazy(() => import('./pages/portal/PortalHomePage').then(m => ({ default: m.PortalHomePage })));
+const PortalProductsPage = lazy(() => import('./pages/portal/PortalProductsPage').then(m => ({ default: m.PortalProductsPage })));
+const PortalCartPage = lazy(() => import('./pages/portal/PortalCartPage').then(m => ({ default: m.PortalCartPage })));
+const PortalOrderHistoryPage = lazy(() => import('./pages/portal/PortalOrderHistoryPage').then(m => ({ default: m.PortalOrderHistoryPage })));
+const PortalOrderDetailPage = lazy(() => import('./pages/portal/PortalOrderDetailPage').then(m => ({ default: m.PortalOrderDetailPage })));
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-64">
@@ -37,7 +47,10 @@ function PageLoader() {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Landing page — choose Admin or Customer login */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* Admin auth */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -69,8 +82,19 @@ export function AppRoutes() {
         <Route path="erechnung" element={<Suspense fallback={<PageLoader />}><ERechenungPage /></Suspense>} />
       </Route>
 
-      {/* Root Redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Customer Portal Routes */}
+      <Route path="/portal/login" element={<Suspense fallback={<PageLoader />}><PortalLoginPage /></Suspense>} />
+      <Route path="/portal" element={
+        <CustomerPortalRoute>
+          <PortalLayout />
+        </CustomerPortalRoute>
+      }>
+        <Route index element={<Suspense fallback={<PageLoader />}><PortalHomePage /></Suspense>} />
+        <Route path="products" element={<Suspense fallback={<PageLoader />}><PortalProductsPage /></Suspense>} />
+        <Route path="cart" element={<Suspense fallback={<PageLoader />}><PortalCartPage /></Suspense>} />
+        <Route path="orders" element={<Suspense fallback={<PageLoader />}><PortalOrderHistoryPage /></Suspense>} />
+        <Route path="orders/:id" element={<Suspense fallback={<PageLoader />}><PortalOrderDetailPage /></Suspense>} />
+      </Route>
     </Routes>
   );
 }
