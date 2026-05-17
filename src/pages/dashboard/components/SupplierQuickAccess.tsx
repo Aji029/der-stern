@@ -40,7 +40,7 @@ export function SupplierQuickAccess({ selectedSupplierId, onSupplierChange }: Su
           onClick={() => onSupplierChange('')}
           className={`text-left px-4 py-2 rounded-lg border transition-colors ${
             !selectedSupplierId
-              ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+              ? 'bg-brand-50 border-brand-200 text-brand-700'
               : 'border-gray-200 hover:bg-gray-50'
           }`}
         >
@@ -52,7 +52,7 @@ export function SupplierQuickAccess({ selectedSupplierId, onSupplierChange }: Su
             onClick={() => onSupplierChange(supplier.id)}
             className={`text-left px-4 py-2 rounded-lg border transition-colors ${
               selectedSupplierId === supplier.id
-                ? 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                ? 'bg-brand-50 border-brand-200 text-brand-700'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
           >

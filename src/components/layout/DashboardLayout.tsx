@@ -204,7 +204,7 @@ export function DashboardLayout() {
                 <div className="hidden sm:block">
                   <GlobalSearch />
                 </div>
-                <button className="p-1 text-gray-400 hover:text-yellow-500 transition-colors duration-200">
+                <button className="p-1 text-gray-400 hover:text-brand-500 transition-colors duration-200">
                   <Bell className="w-6 h-6" />
                 </button>
                 {/* Username hidden on mobile to save header space */}

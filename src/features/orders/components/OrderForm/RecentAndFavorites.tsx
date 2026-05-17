@@ -153,7 +153,7 @@ export function RecentAndFavorites({ customerId, onAddProduct, currentItems }: R
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? (
           <div className="col-span-full text-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mx-auto"></div>
           </div>
         ) : filteredProducts.length > 0 ? (
           filteredProducts.map(product => {
@@ -165,7 +165,7 @@ export function RecentAndFavorites({ customerId, onAddProduct, currentItems }: R
                 className={`flex justify-between items-center p-3 bg-white rounded-lg border transition-all ${
                   isAdded 
                     ? 'border-green-200 bg-green-50' 
-                    : 'border-gray-200 hover:border-yellow-500 hover:shadow-sm'
+                    : 'border-gray-200 hover:border-brand-500 hover:shadow-sm'
                 }`}
               >
                 <div>

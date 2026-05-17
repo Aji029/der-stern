@@ -22,7 +22,7 @@ export function ChatMessages({ messages }: Props) {
           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
         >
           {msg.role === 'assistant' && (
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center mr-2 mt-0.5">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center mr-2 mt-0.5">
               <Bot className="h-4 w-4 text-white" />
             </div>
           )}
@@ -50,7 +50,7 @@ export function ChatMessages({ messages }: Props) {
               <div
                 className={`rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-yellow-400 text-white rounded-br-sm'
+                    ? 'bg-brand-500 text-white rounded-br-sm'
                     : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                 }`}
               >

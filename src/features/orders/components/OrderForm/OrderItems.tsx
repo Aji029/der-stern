@@ -119,7 +119,7 @@ export function OrderItems({ items, onChange, errors = {}, customerId, customerN
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   VK Price
                 </label>
-                <div className="ring-1 ring-yellow-300 rounded-xl">
+                <div className="ring-1 ring-brand-300 rounded-xl">
                   <EditablePrice
                     value={item.vkPrice}
                     onChange={(value) => {

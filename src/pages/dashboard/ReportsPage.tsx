@@ -37,7 +37,7 @@ export function ReportsPage() {
                 onClick={() => setActiveReport(report.id)}
                 className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
                   activeReport === report.id
-                    ? 'border-yellow-500 text-yellow-600'
+                    ? 'border-brand-500 text-brand-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >

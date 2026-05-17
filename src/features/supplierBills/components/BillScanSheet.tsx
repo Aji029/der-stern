@@ -125,7 +125,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <ScanLine className="w-5 h-5 text-yellow-500" />
+            <ScanLine className="w-5 h-5 text-brand-500" />
             <div>
               <h2 className="font-bold text-gray-900 text-base leading-tight">Scan Supplier Bill</h2>
               <p className="text-xs text-gray-500">{supplierName}</p>
@@ -158,7 +158,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
               <React.Fragment key={s}>
                 <div className="flex items-center gap-1">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                    isCurrent ? 'bg-yellow-400 text-gray-900' :
+                    isCurrent ? 'bg-brand-500 text-white' :
                     isDone ? 'bg-green-500 text-white' :
                     'bg-gray-200 text-gray-500'
                   }`}>
@@ -192,7 +192,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
                 onDrop={handleDrop}
                 onDragOver={e => e.preventDefault()}
                 className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
-                  file ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300 hover:border-yellow-300 hover:bg-yellow-50/50'
+                  file ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-brand-300 hover:bg-brand-50/50'
                 }`}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -201,7 +201,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
                     {preview ? (
                       <img src={preview} alt="Bill preview" className="max-h-40 mx-auto rounded-lg object-contain" />
                     ) : (
-                      <FileText className="w-10 h-10 text-yellow-500 mx-auto" />
+                      <FileText className="w-10 h-10 text-brand-500 mx-auto" />
                     )}
                     <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
                     <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(0)} KB · Tap to change</p>
@@ -255,8 +255,8 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
           {step === 'analysing' && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="relative">
-                <ScanLine className="w-12 h-12 text-yellow-400" />
-                <div className="absolute -inset-2 border-2 border-yellow-300 rounded-full animate-ping opacity-40" />
+                <ScanLine className="w-12 h-12 text-brand-500" />
+                <div className="absolute -inset-2 border-2 border-brand-300 rounded-full animate-ping opacity-40" />
               </div>
               <div className="text-center">
                 <p className="font-semibold text-gray-900">Reading invoice with Gemini AI…</p>
@@ -299,7 +299,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
           {/* STEP: applying */}
           {step === 'applying' && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <Loader className="w-10 h-10 text-yellow-400 animate-spin" />
+              <Loader className="w-10 h-10 text-brand-500 animate-spin" />
               <p className="font-semibold text-gray-900">Updating EK prices…</p>
               <p className="text-sm text-gray-500">Saving changes to products and open orders</p>
             </div>
@@ -327,7 +327,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
             <button
               onClick={handleAnalyse}
               disabled={!file || isAnalysing}
-              className="w-full py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="w-full py-3 bg-brand-500 text-white font-bold rounded-xl hover:bg-brand-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Analyse Bill with Gemini AI
             </button>
@@ -344,7 +344,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
               <button
                 onClick={handleApply}
                 disabled={selectedCount === 0 || isApplying}
-                className="flex-2 px-6 py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                className="flex-2 px-6 py-3 bg-brand-500 text-white font-bold rounded-xl hover:bg-brand-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
               >
                 Apply {selectedCount} Change{selectedCount !== 1 ? 's' : ''}
               </button>
@@ -361,7 +361,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 py-3 bg-yellow-400 text-gray-900 font-bold rounded-xl hover:bg-yellow-500 transition-all text-sm"
+                className="flex-1 py-3 bg-brand-500 text-white font-bold rounded-xl hover:bg-brand-600 transition-all text-sm"
               >
                 Done
               </button>

@@ -39,7 +39,7 @@ export function PriceReviewTable({
         </p>
         <button
           onClick={() => onToggleAll(!allSelected)}
-          className="text-xs font-medium text-yellow-600 hover:text-yellow-700"
+          className="text-xs font-medium text-brand-600 hover:text-brand-700"
         >
           {allSelected ? 'Deselect All' : 'Select All'}
         </button>
@@ -56,7 +56,7 @@ export function PriceReviewTable({
                   checked={allSelected}
                   ref={el => { if (el) el.indeterminate = someSelected; }}
                   onChange={e => onToggleAll(e.target.checked)}
-                  className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                  className="rounded border-gray-300 text-brand-500 focus:ring-brand-400"
                 />
               </th>
               <th className="px-3 py-2.5 text-left font-semibold text-gray-600 text-xs uppercase tracking-wide">
@@ -98,7 +98,7 @@ export function PriceReviewTable({
                       type="checkbox"
                       checked={match.selected}
                       onChange={() => onToggleItem(match.artikelNr)}
-                      className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                      className="rounded border-gray-300 text-brand-500 focus:ring-brand-400"
                     />
                   </td>
                   <td className="px-3 py-2.5">
@@ -129,7 +129,7 @@ export function PriceReviewTable({
                       min="0"
                       value={match.newEkPrice}
                       onChange={e => onChangeNewPrice(match.artikelNr, parseFloat(e.target.value) || 0)}
-                      className="w-20 text-right text-xs font-semibold text-gray-900 border border-gray-200 rounded px-1.5 py-1 focus:ring-1 focus:ring-yellow-400 focus:border-transparent"
+                      className="w-20 text-right text-xs font-semibold text-gray-900 border border-gray-200 rounded px-1.5 py-1 focus:ring-1 focus:ring-brand-400 focus:border-transparent"
                     />
                   </td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">

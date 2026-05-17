@@ -31,7 +31,7 @@ export function AIAssistantPanel({ messages, isLoading, onSend, onReset, onClose
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center">
               <Bot className="h-4 w-4 text-white" />
             </div>
             <div>

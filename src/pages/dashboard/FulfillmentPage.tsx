@@ -205,8 +205,8 @@ export function FulfillmentPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-          <div className="p-2 bg-yellow-50 rounded-lg">
-            <PackageOpen className="h-6 w-6 text-yellow-600" />
+          <div className="p-2 bg-brand-50 rounded-lg">
+            <PackageOpen className="h-6 w-6 text-brand-600" />
           </div>
           <div>
             <p className="text-sm text-gray-500">Orders to Pack</p>
@@ -244,7 +244,7 @@ export function FulfillmentPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-3 text-sm font-medium border-b-2 transition-colors duration-150 ${
                   activeTab === tab.id
-                    ? 'border-yellow-500 text-yellow-600'
+                    ? 'border-brand-500 text-brand-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -252,7 +252,7 @@ export function FulfillmentPage() {
                 <span
                   className={`ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium ${
                     activeTab === tab.id
-                      ? 'bg-yellow-100 text-yellow-700'
+                      ? 'bg-brand-100 text-brand-700'
                       : 'bg-gray-100 text-gray-500'
                   }`}
                 >
@@ -285,7 +285,7 @@ export function FulfillmentPage() {
                 <div key={order.id}>
                   {/* Card header */}
                   <div
-                    className={`p-4 ${isExpanded ? 'bg-yellow-50/40' : ''}`}
+                    className={`p-4 ${isExpanded ? 'bg-brand-50/40' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
@@ -305,7 +305,7 @@ export function FulfillmentPage() {
                         className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         {isExpanded
-                          ? <ChevronDown className="h-5 w-5 text-yellow-500" />
+                          ? <ChevronDown className="h-5 w-5 text-brand-500" />
                           : <ChevronRight className="h-5 w-5 text-gray-400" />
                         }
                       </button>
@@ -322,7 +322,7 @@ export function FulfillmentPage() {
                         <button
                           onClick={() => handlePackAll(order)}
                           disabled={isPacking}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 disabled:opacity-50 transition-colors"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 disabled:opacity-50 transition-colors"
                         >
                           {isPacking ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
                           Pack All
@@ -360,13 +360,13 @@ export function FulfillmentPage() {
                               return (
                                 <div
                                   key={item.id ?? item.product.artikelNr}
-                                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white border border-gray-200 active:bg-yellow-50 transition-colors"
+                                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white border border-gray-200 active:bg-brand-50 transition-colors"
                                 >
                                   <button
                                     onClick={() => handleToggleItem(order, item)}
                                     disabled={isToggling}
                                     className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                                      isToggling ? 'border-gray-300 bg-gray-100' : 'border-gray-300 hover:border-yellow-500'
+                                      isToggling ? 'border-gray-300 bg-gray-100' : 'border-gray-300 hover:border-brand-500'
                                     }`}
                                   >
                                     {isToggling && <Loader2 className="h-3 w-3 text-gray-400 animate-spin" />}
@@ -420,7 +420,7 @@ export function FulfillmentPage() {
                       {/* Main row */}
                       <tr
                         className={`border-b border-gray-100 transition-colors ${
-                          isExpanded ? 'bg-yellow-50/40' : 'hover:bg-gray-50'
+                          isExpanded ? 'bg-brand-50/40' : 'hover:bg-gray-50'
                         }`}
                       >
                         {/* Expand toggle */}
@@ -431,7 +431,7 @@ export function FulfillmentPage() {
                             title={isExpanded ? 'Collapse' : 'Show missing items'}
                           >
                             {isExpanded
-                              ? <ChevronDown className="h-4 w-4 text-yellow-600" />
+                              ? <ChevronDown className="h-4 w-4 text-brand-600" />
                               : <ChevronRight className="h-4 w-4 text-gray-400" />
                             }
                           </button>
@@ -470,7 +470,7 @@ export function FulfillmentPage() {
                               <button
                                 onClick={() => handlePackAll(order)}
                                 disabled={isPacking}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 disabled:opacity-50 transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 border border-brand-200 disabled:opacity-50 transition-colors"
                               >
                                 {isPacking ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -518,7 +518,7 @@ export function FulfillmentPage() {
                                       return (
                                         <div
                                           key={item.id ?? item.product.artikelNr}
-                                          className="flex items-center gap-3 py-2 px-3 rounded-md bg-white border border-gray-200 hover:border-yellow-300 transition-colors"
+                                          className="flex items-center gap-3 py-2 px-3 rounded-md bg-white border border-gray-200 hover:border-brand-300 transition-colors"
                                         >
                                           {/* Checkbox */}
                                           <button
@@ -527,7 +527,7 @@ export function FulfillmentPage() {
                                             className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                                               isToggling
                                                 ? 'border-gray-300 bg-gray-100 cursor-wait'
-                                                : 'border-gray-300 hover:border-yellow-500 cursor-pointer'
+                                                : 'border-gray-300 hover:border-brand-500 cursor-pointer'
                                             }`}
                                           >
                                             {isToggling && (

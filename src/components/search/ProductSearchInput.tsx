@@ -178,7 +178,7 @@ export function ProductSearchInput({
                     key={product.artikelNr}
                     className={`p-4 transition-colors ${
                       isSelected ? 'bg-green-50' : 
-                      isFrequent ? 'bg-yellow-50' :
+                      isFrequent ? 'bg-brand-50' :
                       isHovered ? 'bg-gray-50' : ''
                     }`}
                     onMouseEnter={() => setHoveredProduct(product.artikelNr)}

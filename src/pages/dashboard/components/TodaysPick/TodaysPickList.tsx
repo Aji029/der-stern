@@ -278,7 +278,7 @@ export function TodaysPickList({
                 </button>
                 <button
                   onClick={() => setActiveScanSupplier({ id: group.supplierId, name: group.supplierName })}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 active:scale-95 transition-all text-sm font-bold shadow-sm"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 active:scale-95 transition-all text-sm font-bold shadow-sm"
                 >
                   <ScanLine className="h-4 w-4" />
                   Scan Bill

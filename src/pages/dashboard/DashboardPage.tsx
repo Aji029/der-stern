@@ -127,8 +127,8 @@ export function DashboardPage() {
               className="bg-white p-6 rounded-lg shadow-sm border border-gray-200"
             >
               <div className="flex items-center">
-                <div className="p-2 bg-yellow-50 rounded-lg">
-                  <Icon className="h-6 w-6 text-yellow-600" />
+                <div className="p-2 bg-brand-50 rounded-lg">
+                  <Icon className="h-6 w-6 text-brand-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">{stat.name}</p>
@@ -140,7 +140,7 @@ export function DashboardPage() {
               {stat.link && (
                 <Link
                   to={stat.link}
-                  className="mt-4 inline-flex items-center text-sm font-medium text-yellow-600 hover:text-yellow-700"
+                  className="mt-4 inline-flex items-center text-sm font-medium text-brand-600 hover:text-brand-700"
                 >
                   View all
                   <ArrowRight className="ml-1 h-4 w-4" />
@@ -158,7 +158,7 @@ export function DashboardPage() {
             <h3 className="text-lg font-medium text-gray-900">Recent Orders</h3>
             <Link
               to="/dashboard/orders"
-              className="text-sm font-medium text-yellow-600 hover:text-yellow-700"
+              className="text-sm font-medium text-brand-600 hover:text-brand-700"
             >
               View all
             </Link>
@@ -207,7 +207,7 @@ export function DashboardPage() {
                         {formatPrice(d.amount)}
                       </div>
                       <div
-                        className="w-full rounded-t-sm bg-yellow-400 transition-all duration-300"
+                        className="w-full rounded-t-sm bg-brand-500 transition-all duration-300"
                         style={{ height: `${Math.max((d.amount / max) * 100, d.amount > 0 ? 4 : 0)}%` }}
                       />
                     </div>
@@ -232,8 +232,8 @@ export function DashboardPage() {
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-50 rounded-lg">
-              <ClipboardList className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 bg-brand-50 rounded-lg">
+              <ClipboardList className="h-6 w-6 text-brand-600" />
             </div>
             <div>
               <h3 className="text-lg font-medium text-gray-900">Today's Pick</h3>
@@ -242,7 +242,7 @@ export function DashboardPage() {
           </div>
           <Link
             to="/dashboard/todays-pick"
-            className="inline-flex items-center text-sm font-medium text-yellow-600 hover:text-yellow-700"
+            className="inline-flex items-center text-sm font-medium text-brand-600 hover:text-brand-700"
           >
             View Picks
             <ArrowRight className="ml-1 h-4 w-4" />

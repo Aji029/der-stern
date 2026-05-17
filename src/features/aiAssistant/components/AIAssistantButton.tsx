@@ -10,7 +10,7 @@ export function AIAssistantButton({ onClick, isLoading }: Props) {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-14 h-14 rounded-full bg-yellow-400 hover:bg-yellow-500 active:scale-95 shadow-lg flex items-center justify-center transition-all duration-200"
+      className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-14 h-14 rounded-full bg-brand-500 hover:bg-brand-600 active:scale-95 shadow-lg flex items-center justify-center transition-all duration-200"
       aria-label="Open AI Assistant"
       title="AI Assistant"
     >

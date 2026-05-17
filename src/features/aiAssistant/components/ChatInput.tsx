@@ -109,7 +109,7 @@ export function ChatInput({ onSend, disabled }: Props) {
           disabled={disabled}
           placeholder="Ask me anything or describe an order…"
           rows={1}
-          className="flex-1 resize-none rounded-2xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 disabled:opacity-40 leading-relaxed"
+          className="flex-1 resize-none rounded-2xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-40 leading-relaxed"
           style={{ maxHeight: '120px', overflowY: 'auto' }}
         />
 
@@ -133,7 +133,7 @@ export function ChatInput({ onSend, disabled }: Props) {
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className="flex-shrink-0 p-2 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-shrink-0 p-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           title="Send"
         >
           <Send className="h-5 w-5" />

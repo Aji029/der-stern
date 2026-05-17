@@ -150,7 +150,7 @@ export function GlobalSearch() {
   const icons: Record<string, React.ReactNode> = {
     product: <Package className="w-4 h-4 text-blue-500" />,
     customer: <Users className="w-4 h-4 text-green-500" />,
-    order: <ShoppingCart className="w-4 h-4 text-yellow-500" />,
+    order: <ShoppingCart className="w-4 h-4 text-brand-500" />,
   };
 
   // Group results by type in fixed order

@@ -110,7 +110,7 @@ export function OrderList({ orders }: OrderListProps) {
                       <DeliveryNoteButton order={order} />
                       <CustomInvoiceButton 
                         order={order} 
-                        className="text-yellow-600 hover:text-yellow-700"
+                        className="text-brand-600 hover:text-brand-700"
                       >
                         <Banknote className="h-4 w-4" />
                       </CustomInvoiceButton>

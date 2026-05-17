@@ -49,7 +49,7 @@ export function SalesReport() {
               <div className="flex-1">
                 <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="absolute top-0 left-0 h-full bg-yellow-500"
+                    className="absolute top-0 left-0 h-full bg-brand-500"
                     style={{
                       width: `${(amount / totalSales) * 100}%`,
                     }}

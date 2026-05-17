@@ -31,7 +31,7 @@ export function OrdersTable() {
           type="checkbox"
           checked={table.getIsAllRowsSelected()}
           onChange={table.getToggleAllRowsSelectedHandler()}
-          className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
         />
       ),
       cell: ({ row }) => (
@@ -39,7 +39,7 @@ export function OrdersTable() {
           type="checkbox"
           checked={row.getIsSelected()}
           onChange={row.getToggleSelectedHandler()}
-          className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
         />
       ),
     }),
@@ -222,7 +222,7 @@ export function OrdersTable() {
                   type="checkbox"
                   checked={selectedOrders.includes(order.id)}
                   onChange={() => toggleOrderSelection([order.id])}
-                  className="mt-1 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                  className="mt-1 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 truncate">

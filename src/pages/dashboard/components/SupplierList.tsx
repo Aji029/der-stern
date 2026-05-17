@@ -33,7 +33,7 @@ const columns = [
     header: 'Rating',
     cell: info => (
       <div className="flex items-center">
-        <Star className="h-4 w-4 text-yellow-400 fill-current" />
+        <Star className="h-4 w-4 text-brand-500 fill-current" />
         <span className="ml-1">{info.getValue()}</span>
       </div>
     ),
