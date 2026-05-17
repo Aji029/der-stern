@@ -24,12 +24,12 @@ export function TodaysPicks() {
   // Calculate supplier stats for today
   const supplierStats = suppliers.map(supplier => {
     const supplierOrders = todaysOrders.filter(order =>
-      order.items.some(item => item.product.supplierId === supplier.id)
+      order.items.some(item => item.product?.supplierId === supplier.id)
     );
 
     const totalAmount = supplierOrders.reduce((sum, order) => {
-      const supplierItems = order.items.filter(item => 
-        item.product.supplierId === supplier.id
+      const supplierItems = order.items.filter(item =>
+        item.product?.supplierId === supplier.id
       );
       return sum + supplierItems.reduce((itemSum, item) => 
         itemSum + (item.quantity * item.vkPrice), 0
@@ -73,7 +73,7 @@ export function TodaysPicks() {
               <div className="text-sm text-gray-500 space-y-1">
                 <div>Orders Today: {supplier.orderCount}</div>
                 <div>Total Amount: {formatPrice(supplier.totalAmount)}</div>
-                <div>Contact: {supplier.contactPerson}</div>
+                {supplier.contactPerson && <div>Contact: {supplier.contactPerson}</div>}
               </div>
             </div>
           ))}

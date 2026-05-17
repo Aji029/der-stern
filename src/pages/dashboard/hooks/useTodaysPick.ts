@@ -14,7 +14,7 @@ export function useTodaysPick(selectedDate: string) {
   // Derive loading state from the data source — avoids the "empty flash" before
   // OrderContext finishes its Supabase fetch when orders is still []
   const { orders, isLoading: ordersLoading } = useOrders();
-  const { suppliers } = useSuppliers();
+  const { suppliers, isLoading: suppliersLoading } = useSuppliers();
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,7 +86,7 @@ export function useTodaysPick(selectedDate: string) {
 
   return {
     groupedOrders,
-    isLoading: ordersLoading,
+    isLoading: ordersLoading || suppliersLoading,
     error,
   };
 }
