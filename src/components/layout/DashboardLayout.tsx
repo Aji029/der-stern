@@ -74,21 +74,28 @@ export function DashboardLayout() {
         {/* Desktop Sidebar */}
         <div className="hidden lg:relative lg:flex lg:flex-col">
           <div
-            className={`flex flex-col h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out group ${
+            className={`flex flex-col h-full transition-all duration-300 ease-in-out group ${
               isCollapsed ? 'w-16 hover:w-64' : 'w-64'
             }`}
+            style={{ background: '#2e3c0a', borderRight: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div className="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
-              <div className="flex items-center flex-shrink-0 px-4 mb-5">
-                <Star className="w-8 h-8 text-yellow-500 flex-shrink-0" />
-                <span className={`ml-2 text-xl font-semibold text-gray-900 transition-all duration-300 ${
+              <div className="flex items-center flex-shrink-0 px-4 mb-6">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                     style={{ background: '#8cb918' }}>
+                  <Star className="w-4 h-4 text-white fill-white" />
+                </div>
+                <div className={`ml-2.5 transition-all duration-300 overflow-hidden ${
                   isCollapsed ? 'opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto' : 'opacity-100 w-auto'
                 }`}>
-                  der Stern
-                </span>
+                  <div className="flex items-baseline gap-1 whitespace-nowrap">
+                    <span className="text-white/50 text-xs font-medium tracking-wider uppercase">Der</span>
+                    <span className="text-white text-lg font-extrabold tracking-wider uppercase">Stern</span>
+                  </div>
+                </div>
               </div>
 
-              <nav className="flex-1 px-2 space-y-1">
+              <nav className="flex-1 px-2 space-y-0.5">
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.href;
@@ -96,11 +103,13 @@ export function DashboardLayout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                        isActive
-                          ? 'bg-yellow-50 text-yellow-600'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150"
+                      style={{
+                        background: isActive ? 'rgba(140,185,24,0.2)' : 'transparent',
+                        color: isActive ? '#8cb918' : 'rgba(255,255,255,0.55)',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; } }}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
                       <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${
@@ -115,11 +124,13 @@ export function DashboardLayout() {
                 {/* AI Assistant — opens overlay panel, styled identical to nav items */}
                 <button
                   onClick={openAI}
-                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isAIOpen
-                      ? 'bg-yellow-50 text-yellow-600'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className="flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150"
+                  style={{
+                    background: isAIOpen ? 'rgba(140,185,24,0.2)' : 'transparent',
+                    color: isAIOpen ? '#8cb918' : 'rgba(255,255,255,0.55)',
+                  }}
+                  onMouseEnter={e => { if (!isAIOpen) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; } }}
+                  onMouseLeave={e => { if (!isAIOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; } }}
                 >
                   <Bot className="w-5 h-5 flex-shrink-0" />
                   <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${
@@ -131,10 +142,13 @@ export function DashboardLayout() {
               </nav>
             </div>
 
-            <div className="flex-shrink-0 p-4 border-t border-gray-200">
+            <div className="flex-shrink-0 p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <button
                 onClick={handleLogout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                className="flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
               >
                 <LogOut className="w-5 h-5 flex-shrink-0" />
                 <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${
@@ -147,12 +161,15 @@ export function DashboardLayout() {
 
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="absolute top-1/2 -right-3 transform -translate-y-1/2 z-10 w-6 h-6 bg-white rounded-full border border-gray-200 flex items-center justify-center shadow-md hover:bg-gray-50 focus:outline-none transition-transform duration-200"
+              className="absolute top-1/2 -right-3 transform -translate-y-1/2 z-10 w-6 h-6 rounded-full flex items-center justify-center shadow-lg focus:outline-none transition-colors"
+              style={{ background: '#3d5010', border: '1px solid rgba(255,255,255,0.12)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#4e6314')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#3d5010')}
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isCollapsed
-                ? <ChevronRight className="h-4 w-4 text-gray-600" />
-                : <ChevronLeft className="h-4 w-4 text-gray-600" />
+                ? <ChevronRight className="h-3.5 w-3.5 text-white/70" />
+                : <ChevronLeft  className="h-3.5 w-3.5 text-white/70" />
               }
             </button>
           </div>

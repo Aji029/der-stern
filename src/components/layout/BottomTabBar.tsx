@@ -33,16 +33,16 @@ export function BottomTabBar({ onMorePress }: BottomTabBarProps) {
           <Link
             key={tab.name}
             to={tab.href}
-            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-h-[56px] transition-colors active:bg-yellow-50 ${
-              active ? 'text-yellow-500' : 'text-gray-400'
+            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-h-[56px] transition-colors active:bg-brand-50 ${
+              active ? 'text-brand-500' : 'text-gray-400'
             }`}
           >
-            <Icon className={`h-5 w-5 ${active ? 'text-yellow-500' : 'text-gray-400'}`} />
-            <span className={`text-[10px] font-medium ${active ? 'text-yellow-600' : 'text-gray-400'}`}>
+            <Icon className={`h-5 w-5 ${active ? 'text-brand-500' : 'text-gray-400'}`} />
+            <span className={`text-[10px] font-medium ${active ? 'text-brand-600' : 'text-gray-400'}`}>
               {tab.name}
             </span>
             {active && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-yellow-400 rounded-full" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-brand-500 rounded-full" />
             )}
           </Link>
         );
