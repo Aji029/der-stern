@@ -9,8 +9,6 @@ import { formatDateForDisplay } from '../../../../utils/dateFormatting';
 import { formatPrice } from '../../../../utils/priceCalculations';
 import { calculateSupplierTotals } from '../../../../utils/supplierCalculations';
 import { useEKPriceUpdate } from '../../../../hooks/useEKPriceUpdate';
-import { useSupplierUpdate } from '../../../../hooks/useSupplierUpdate';
-import { useSuppliers } from '../../../../context/SupplierContext';
 import { SupplierSummary } from './SupplierSummary';
 import { PDFButton } from './PDFButton';
 import { SimplifiedPickPDF } from './SimplifiedPickPDF';
@@ -52,22 +50,11 @@ export function TodaysPickList({
   onClearAll,
 }: TodaysPickListProps) {
   const { updatePriceAndOrders } = useEKPriceUpdate();
-  const { updateSupplierAcrossOrders } = useSupplierUpdate();
-  const { suppliers } = useSuppliers();
   const [activeScanSupplier, setActiveScanSupplier] = useState<{ id: string; name: string } | null>(null);
 
   const handlePriceUpdate = useCallback(async (artikelNr: string, newPrice: number) => {
     await updatePriceAndOrders(artikelNr, newPrice);
   }, [updatePriceAndOrders]);
-
-  const handleSupplierChange = async (artikelNr: string, newSupplierId: string) => {
-    try {
-      await updateSupplierAcrossOrders(artikelNr, newSupplierId);
-    } catch (error) {
-      console.error('Failed to update supplier:', error);
-      alert('Failed to update supplier. Please try again.');
-    }
-  };
 
   const handleSimplifiedPDF = async (group: GroupedOrders) => {
     try {
@@ -312,7 +299,7 @@ export function TodaysPickList({
                       isPicked ? 'bg-green-50' : 'hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-center justify-between gap-3">
                       <div className={`flex items-start space-x-3 flex-1 min-w-0 ${isPicked ? 'opacity-75' : ''}`}>
                         {/* Checkbox — stop propagation to prevent double-toggle from the row click */}
                         <div className="flex-shrink-0 pt-0.5" onClick={e => e.stopPropagation()}>
@@ -335,48 +322,15 @@ export function TodaysPickList({
                             {item.product?.name}
                           </p>
                           <p className="text-xs md:text-sm text-gray-500">Art. Nr: {item.product?.artikelNr}</p>
-                          {/* Mobile qty/total */}
-                          <div className="flex items-center gap-4 mt-2 lg:hidden">
-                            <div>
-                              <p className="text-xs font-medium text-gray-500">Qty</p>
-                              <p className={`font-bold text-base ${isPicked ? 'text-gray-400' : 'text-gray-900'}`}>
-                                {item.quantity.toFixed(2)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-gray-500">Total</p>
-                              <p className={`text-sm font-medium ${isPicked ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {formatPrice(item.ekPrice * item.quantity)}
-                              </p>
-                            </div>
-                          </div>
                         </div>
                       </div>
 
-                      {/* Right-side controls — supplier + EK price + qty */}
+                      {/* Right-side controls — EK price + qty */}
                       <div
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center gap-3 lg:gap-6"
+                        className="flex items-center gap-4 lg:gap-6"
                         onClick={e => e.stopPropagation()}
                       >
-                        <div className="w-full lg:w-48">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Supplier
-                          </label>
-                          <select
-                            value={item.product?.supplierId || ''}
-                            onChange={(e) => handleSupplierChange(item.product?.artikelNr || '', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          >
-                            <option value="">Select supplier</option>
-                            {suppliers.map(supplier => (
-                              <option key={supplier.id} value={supplier.id}>
-                                {supplier.companyName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="w-full sm:w-auto">
+                        <div>
                           <p className="text-xs font-medium text-gray-500 mb-1">EK Price</p>
                           <EditableEKPrice
                             value={item.ekPrice}
@@ -385,12 +339,12 @@ export function TodaysPickList({
                           />
                         </div>
 
-                        <div className="hidden lg:block text-right min-w-[140px]">
-                          <p className={`font-bold text-lg ${isPicked ? 'text-gray-400' : 'text-gray-900'}`}>
-                            Qty: {item.quantity.toFixed(2)}
+                        <div className="text-right">
+                          <p className={`font-bold text-base ${isPicked ? 'text-gray-400' : 'text-gray-900'}`}>
+                            {item.quantity.toFixed(2)}
                           </p>
-                          <p className={`text-sm font-medium ${isPicked ? 'text-gray-400' : 'text-gray-600'}`}>
-                            Total: {formatPrice(item.ekPrice * item.quantity)}
+                          <p className={`text-xs font-medium ${isPicked ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {formatPrice(item.ekPrice * item.quantity)}
                           </p>
                         </div>
                       </div>
