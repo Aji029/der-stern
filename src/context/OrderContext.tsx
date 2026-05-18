@@ -11,9 +11,10 @@ interface OrderContextType {
   updateOrder: (id: string, order: Order) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
   getOrder: (id: string) => Order | undefined;
-  refreshOrders: () => Promise<void>;
+  refreshOrders: (silent?: boolean) => Promise<void>;
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
   patchVKPrice: (artikelNr: string, newPrice: number) => void;
+  patchItemSupplier: (artikelNr: string, supplierId: string) => void;
   patchPackedStatus: (orderId: string, updates: Array<{ itemId: string; isPacked: boolean; packedAt?: Date; packedBy?: string }>) => void;
   patchOrderStatus: (orderId: string, status: Order['status']) => void;
 }
@@ -329,6 +330,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     })));
   };
 
+  const patchItemSupplier = (artikelNr: string, supplierId: string) => {
+    setOrders(prev => prev.map(order => ({
+      ...order,
+      items: order.items.map(item =>
+        item.product?.artikelNr === artikelNr
+          ? { ...item, product: { ...item.product, supplierId } }
+          : item
+      )
+    })));
+  };
+
   // Optimistic local-only update for order status — used by FulfillmentPage
   // when all items are packed (Pending → Processing) or unpacked (Processing → Pending)
   const patchOrderStatus = (orderId: string, status: Order['status']) => {
@@ -368,6 +380,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       refreshOrders: fetchOrders,
       patchEKPrice,
       patchVKPrice,
+      patchItemSupplier,
       patchPackedStatus,
       patchOrderStatus,
     }}>

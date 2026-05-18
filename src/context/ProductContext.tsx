@@ -10,6 +10,7 @@ interface ProductContextType {
   deleteProduct: (artikelNr: string) => Promise<void>;
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
   patchVKPrice: (artikelNr: string, newPrice: number) => void;
+  patchSupplier: (artikelNr: string, supplierId: string) => void;
   isLoading: boolean;
   error: string | null;
   refreshProducts: () => Promise<void>;
@@ -178,6 +179,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
+  const patchSupplier = (artikelNr: string, supplierId: string) => {
+    setProducts(prev => prev.map(p =>
+      p.artikelNr === artikelNr ? { ...p, supplierId } : p
+    ));
+  };
+
   const deleteProduct = async (artikelNr: string) => {
     try {
       setIsLoading(true);
@@ -205,6 +212,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       deleteProduct,
       patchEKPrice,
       patchVKPrice,
+      patchSupplier,
       isLoading,
       error,
       refreshProducts: loadProducts
