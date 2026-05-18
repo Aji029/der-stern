@@ -400,7 +400,7 @@ export function TodaysPickList({
                         className="flex items-center gap-3 flex-shrink-0"
                         onClick={e => e.stopPropagation()}
                       >
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right">
                           <p className="text-xs text-gray-500">EK</p>
                           <EditableEKPrice
                             value={item.ekPrice}
