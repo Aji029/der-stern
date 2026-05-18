@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase, updatePriceDirectly } from '../lib/supabase';
+import { updatePriceDirectly } from '../lib/supabase';
 import { useOrders } from '../context/OrderContext';
 import { useProducts } from '../context/ProductContext';
 
@@ -14,7 +14,6 @@ export function useVKPriceUpdate() {
       throw new Error('Invalid input parameters');
     }
 
-    // Capture original price so we can revert if DB write fails
     const originalPrice = products.find(p => p.artikelNr === artikelNr)?.vkPrice ?? newPrice;
 
     // 1. Optimistic update — instant UI feedback across all pages
@@ -25,42 +24,9 @@ export function useVKPriceUpdate() {
     setError(null);
 
     try {
-      // 2. Update products.vk_price in DB
+      // 2. Single write — DB triggers cascade the change to order_items automatically
       await updatePriceDirectly(artikelNr, newPrice, 'vk_price');
-
-      // 3. Update vk_price in all Pending/Processing order_items for this product
-      let allOrderIds: string[] = [];
-      let from = 0;
-      const PAGE = 1000;
-
-      while (true) {
-        const { data, error: fetchError } = await supabase
-          .from('orders')
-          .select('id')
-          .in('status', ['Pending', 'Processing'])
-          .range(from, from + PAGE - 1);
-
-        if (fetchError) throw fetchError;
-        if (!data || data.length === 0) break;
-
-        allOrderIds = [...allOrderIds, ...data.map((o: { id: string }) => o.id)];
-        if (data.length < PAGE) break;
-        from += PAGE;
-      }
-
-      const CHUNK = 100;
-      for (let i = 0; i < allOrderIds.length; i += CHUNK) {
-        const chunk = allOrderIds.slice(i, i + CHUNK);
-        const { error: updateError } = await supabase
-          .from('order_items')
-          .update({ vk_price: parseFloat(newPrice.toFixed(2)) })
-          .eq('product_id', artikelNr)
-          .in('order_id', chunk);
-
-        if (updateError) throw updateError;
-      }
     } catch (err: any) {
-      // DB write failed — revert the optimistic update so UI stays in sync with DB
       patchOrderVKPrice(artikelNr, originalPrice);
       patchProductVKPrice(artikelNr, originalPrice);
       const message = err?.message || 'Failed to update VK price';
