@@ -6,6 +6,7 @@ import { EditablePrice } from '../../../../components/ui/EditablePrice';
 import { ProfitMarginDisplay } from '../../../../components/ProfitMarginDisplay';
 import { formatPrice, calculateProfitAmount } from '../../../../utils/priceCalculations';
 import { useVKPriceUpdate } from '../../../../hooks/useVKPriceUpdate';
+import { useEKPriceUpdate } from '../../../../hooks/useEKPriceUpdate';
 import type { OrderItem, OrderDiscount } from '../../../../types/order';
 
 interface OrderItemsProps {
@@ -258,11 +259,19 @@ function OrderItemCard({
   onRemoveItem,
 }: OrderItemCardProps) {
   const { updateVKPriceAndOrders } = useVKPriceUpdate();
+  const { updatePriceAndOrders: updateEKPriceAndOrders } = useEKPriceUpdate();
 
   const handleVKChange = (value: number) => {
     onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value });
     if (item.product.artikelNr) {
       updateVKPriceAndOrders(item.product.artikelNr, value).catch(console.error);
+    }
+  };
+
+  const handleEKChange = (value: number) => {
+    onUpdateItem(actualIndex, { ekPrice: value });
+    if (item.product.artikelNr) {
+      updateEKPriceAndOrders(item.product.artikelNr, value).catch(console.error);
     }
   };
 
@@ -360,7 +369,7 @@ function OrderItemCard({
           <label className="block text-[11px] font-medium text-gray-400 mb-1">EK Price</label>
           <EditablePrice
             value={item.ekPrice}
-            onChange={(value) => onUpdateItem(actualIndex, { ekPrice: value })}
+            onChange={handleEKChange}
           />
         </div>
 

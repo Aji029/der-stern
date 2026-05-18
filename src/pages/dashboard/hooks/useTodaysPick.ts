@@ -11,10 +11,8 @@ export interface GroupedOrders {
 }
 
 export function useTodaysPick(selectedDate: string) {
-  // Derive loading state from the data source — avoids the "empty flash" before
-  // OrderContext finishes its Supabase fetch when orders is still []
   const { orders, isLoading: ordersLoading } = useOrders();
-  const { suppliers, isLoading: suppliersLoading } = useSuppliers();
+  const { suppliers } = useSuppliers();
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,8 +21,8 @@ export function useTodaysPick(selectedDate: string) {
       setError(null);
 
       // Filter orders for the selected date and non-completed orders
-      const dateOrders = orders.filter(order => 
-        isSameDay(order.orderDate, selectedDate) && 
+      const dateOrders = orders.filter(order =>
+        isSameDay(order.orderDate, selectedDate) &&
         order.status !== 'Completed' &&
         order.status !== 'Cancelled'
       );
@@ -37,37 +35,36 @@ export function useTodaysPick(selectedDate: string) {
           // Guard: product JOIN can return null if the product was deleted after the order was placed
           if (!item.product || !item.product.supplierId) return;
 
-          const supplier = suppliers.find(s => s.id === item.product.supplierId);
-          if (!supplier) return;
+          const supplierId = item.product.supplierId;
+          // Look up supplier name from context — fall back to ID if not loaded yet
+          const supplier = suppliers.find(s => s.id === supplierId);
+          const supplierName = supplier?.companyName || supplierId;
 
-          const existingGroup = supplierGroups.get(supplier.id);
-          
+          const existingGroup = supplierGroups.get(supplierId);
+
           if (existingGroup) {
-            // Check if product already exists in group
+            // Update name in case supplier context just loaded
+            existingGroup.supplierName = supplier?.companyName || existingGroup.supplierName;
+
             const existingItem = existingGroup.items.find(
               existing => existing.product.artikelNr === item.product.artikelNr
             );
 
             if (existingItem) {
-              // Add quantities if product exists
               existingItem.quantity += item.quantity;
             } else {
-              // Add new product if it doesn't exist
               existingGroup.items.push({ ...item });
             }
           } else {
-            // Create new group if supplier doesn't exist
-            supplierGroups.set(supplier.id, {
-              supplierId: supplier.id,
-              supplierName: supplier.companyName,
+            supplierGroups.set(supplierId, {
+              supplierId,
+              supplierName,
               items: [{ ...item }],
             });
           }
         });
       });
 
-      // Sort suppliers by name and sort items within each supplier by name
-      // Use nullish coalescing to guard against null/undefined names (e.g. deleted supplier or product)
       const sortedGroups = Array.from(supplierGroups.values())
         .sort((a, b) => (a.supplierName ?? '').localeCompare(b.supplierName ?? ''))
         .map(group => ({
@@ -86,7 +83,7 @@ export function useTodaysPick(selectedDate: string) {
 
   return {
     groupedOrders,
-    isLoading: ordersLoading || suppliersLoading,
+    isLoading: ordersLoading, // Don't block on suppliersLoading — items show immediately, names resolve when suppliers load
     error,
   };
 }
