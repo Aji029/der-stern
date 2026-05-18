@@ -60,10 +60,10 @@ export function TodaysPickPage() {
             <Filter className="h-5 w-5 text-gray-600" />
             <h3 className="font-semibold text-gray-900">Filter by Supplier</h3>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
             <button
               onClick={selectAllSuppliers}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 selectedSuppliers.length === 0
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -84,7 +84,7 @@ export function TodaysPickPage() {
                 <button
                   key={order.supplierId}
                   onClick={() => toggleSupplier(order.supplierId)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-sm'
                       : isComplete
