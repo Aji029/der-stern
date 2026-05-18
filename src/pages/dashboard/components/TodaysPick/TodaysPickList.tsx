@@ -1,6 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, lazy, Suspense } from 'react';
 import { Package, Loader, FileText, ScanLine, CheckCircle2, X } from 'lucide-react';
-import { BillScanSheet } from '../../../../features/supplierBills/components/BillScanSheet';
+const BillScanSheet = lazy(() =>
+  import('../../../../features/supplierBills/components/BillScanSheet').then(m => ({ default: m.BillScanSheet }))
+);
 import { pdf } from '@react-pdf/renderer';
 import { EditableEKPrice } from '../../../../components/ui/EditableEKPrice';
 import { formatDateForDisplay } from '../../../../utils/dateFormatting';
@@ -405,13 +407,15 @@ export function TodaysPickList({
         );
       })}
 
-      {/* Bill scan sheet — rendered at the root so it overlays everything */}
+      {/* Bill scan sheet — lazy loaded so it never blocks the pick list */}
       {activeScanSupplier && (
-        <BillScanSheet
-          supplierId={activeScanSupplier.id}
-          supplierName={activeScanSupplier.name}
-          onClose={() => setActiveScanSupplier(null)}
-        />
+        <Suspense fallback={null}>
+          <BillScanSheet
+            supplierId={activeScanSupplier.id}
+            supplierName={activeScanSupplier.name}
+            onClose={() => setActiveScanSupplier(null)}
+          />
+        </Suspense>
       )}
     </div>
   );

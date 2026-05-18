@@ -94,11 +94,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       // Only fetch Pending/Processing — the vast majority of completed orders
       // are not needed here (Orders page uses its own paginated hook)
-      const { data, error: fetchError } = await supabase
+      const fetchPromise = supabase
         .from('orders')
         .select(ORDER_SELECT)
         .in('status', ['Pending', 'Processing'])
         .order('created_at', { ascending: false });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Orders fetch timed out')), 10000)
+      );
+
+      const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (fetchError) throw fetchError;
 
