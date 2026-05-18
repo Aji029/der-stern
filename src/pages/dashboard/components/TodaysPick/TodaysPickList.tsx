@@ -78,6 +78,7 @@ function InlineSupplierSelect({
       onBlur={() => setOpen(false)}
       onClick={e => e.stopPropagation()}
       className="text-xs px-2 py-1 rounded-lg border border-blue-400 bg-white shadow-lg max-w-[200px] focus:outline-none focus:ring-2 focus:ring-blue-400"
+      style={{ backgroundImage: 'none', paddingRight: '0.5rem' }}
     >
       <option value="">— No supplier —</option>
       {suppliers.map(s => (
