@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, X } from 'lucide-react';
-import { Button } from './Button';
+import React, { useState, useEffect, useRef } from 'react';
+import { Pencil, Check, Loader } from 'lucide-react';
 import { formatPrice } from '../../utils/priceCalculations';
 
 interface EditableEKPriceProps {
@@ -16,10 +15,9 @@ export function EditableEKPrice({ value, artikelNr, orderId, onUpdate }: Editabl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayValue, setDisplayValue] = useState(value);
+  // Track whether a save is already in-flight so onBlur doesn't double-fire
+  const savingRef = useRef(false);
 
-  // Sync displayValue and tempValue when the parent passes a new value
-  // (e.g. patchEKPrice from another page / realtime update).
-  // Guard: don't overwrite the user's in-progress typing.
   useEffect(() => {
     if (!isEditing) {
       setDisplayValue(value);
@@ -28,90 +26,87 @@ export function EditableEKPrice({ value, artikelNr, orderId, onUpdate }: Editabl
   }, [value, isEditing]);
 
   const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     try {
       setIsSubmitting(true);
       setError(null);
       const newPrice = parseFloat(tempValue);
-      
       if (isNaN(newPrice) || newPrice < 0) {
-        setError('Please enter a valid price');
+        setError('Invalid price');
         return;
       }
-
       await onUpdate(newPrice);
       setDisplayValue(newPrice);
       setIsEditing(false);
-    } catch (error: any) {
-      console.error('Failed to update price:', error);
-      setError(error.message || 'Failed to update price');
+    } catch (err: any) {
+      console.error('Failed to update price:', err);
+      setError(err.message || 'Save failed');
     } finally {
       setIsSubmitting(false);
+      savingRef.current = false;
     }
+  };
+
+  const handleCancel = () => {
+    savingRef.current = true; // prevent onBlur from saving
+    setTempValue(displayValue.toString());
+    setIsEditing(false);
+    setError(null);
+    setTimeout(() => { savingRef.current = false; }, 100);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      setTempValue(displayValue.toString());
-      setIsEditing(false);
-      setError(null);
-    }
+    if (e.key === 'Enter') { e.preventDefault(); handleSave(); }
+    else if (e.key === 'Escape') handleCancel();
   };
 
+  // ── Display mode ────────────────────────────────────────────────────────────
   if (!isEditing) {
     return (
-      <div 
+      <button
+        type="button"
         onClick={() => setIsEditing(true)}
-        className="font-bold cursor-pointer hover:text-blue-600 transition-colors"
-        title="Click to edit"
+        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors group cursor-pointer"
+        title="Tap to edit EK price"
       >
-        {formatPrice(displayValue)}
-      </div>
+        <span className="text-sm font-bold text-gray-800 group-hover:text-blue-600 whitespace-nowrap">
+          {formatPrice(displayValue)}
+        </span>
+        <Pencil className="h-3 w-3 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+      </button>
     );
   }
 
+  // ── Edit mode ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center space-x-2">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
         <input
           type="number"
           step="0.01"
           min="0"
           value={tempValue}
-          onChange={(e) => setTempValue(e.target.value)}
+          onChange={e => setTempValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className={`w-24 px-2 py-1 border rounded focus:ring-1 focus:ring-blue-500 ${
-            error ? 'border-red-500' : ''
-          }`}
+          onBlur={handleSave}
+          className="w-20 px-2 py-1.5 text-sm font-semibold border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
           autoFocus
         />
-        <div className="flex space-x-1">
-          <Button
-            variant="ghost"
-            size="sm"
+        {isSubmitting ? (
+          <Loader className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />
+        ) : (
+          <button
+            type="button"
+            onMouseDown={e => e.preventDefault()} // prevent onBlur from firing before click
             onClick={handleSave}
-            disabled={isSubmitting}
-            className="p-1 text-green-600 hover:bg-green-50"
+            className="p-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors flex-shrink-0"
           >
-            <Check className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setTempValue(displayValue.toString());
-              setIsEditing(false);
-              setError(null);
-            }}
-            disabled={isSubmitting}
-            className="p-1 text-red-600 hover:bg-red-50"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
