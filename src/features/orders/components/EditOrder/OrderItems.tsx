@@ -260,18 +260,28 @@ function OrderItemCard({
 }: OrderItemCardProps) {
   const { updateVKPriceAndOrders } = useVKPriceUpdate();
   const { updatePriceAndOrders: updateEKPriceAndOrders } = useEKPriceUpdate();
+  const [vkError, setVkError] = useState<string | null>(null);
+  const [ekError, setEkError] = useState<string | null>(null);
 
   const handleVKChange = (value: number) => {
     onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value });
     if (item.product.artikelNr) {
-      updateVKPriceAndOrders(item.product.artikelNr, value).catch(console.error);
+      setVkError(null);
+      updateVKPriceAndOrders(item.product.artikelNr, value).catch((err: any) => {
+        setVkError(err?.message || 'VK price save failed');
+        setTimeout(() => setVkError(null), 6000);
+      });
     }
   };
 
   const handleEKChange = (value: number) => {
     onUpdateItem(actualIndex, { ekPrice: value });
     if (item.product.artikelNr) {
-      updateEKPriceAndOrders(item.product.artikelNr, value).catch(console.error);
+      setEkError(null);
+      updateEKPriceAndOrders(item.product.artikelNr, value).catch((err: any) => {
+        setEkError(err?.message || 'EK price save failed');
+        setTimeout(() => setEkError(null), 6000);
+      });
     }
   };
 
@@ -371,6 +381,7 @@ function OrderItemCard({
             value={item.ekPrice}
             onChange={handleEKChange}
           />
+          {ekError && <p className="mt-1 text-[11px] text-red-500 leading-tight">{ekError}</p>}
         </div>
 
         {/* VK Price — primary, yellow ring */}
@@ -386,6 +397,7 @@ function OrderItemCard({
               customerName={customerName}
             />
           </div>
+          {vkError && <p className="mt-1 text-[11px] text-red-500 leading-tight">{vkError}</p>}
         </div>
 
         {/* Total — read-only */}
