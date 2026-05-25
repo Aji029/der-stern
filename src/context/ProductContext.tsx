@@ -18,16 +18,19 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+// Per-session cache so a browser refresh shows products instantly instead of
+// waiting on a full re-download of every product. Cleared when the tab closes.
+const PRODUCTS_CACHE_KEY = 'der-stern-products-cache';
+
 export function ProductProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProducts = async () => {
+  const loadProducts = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
-      console.log('Fetching products from Supabase...');
 
       let allProducts: any[] = [];
       let count = 0;
@@ -61,14 +64,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
           hasMore = false;
         }
 
-        // Update state progressively as we receive data
-        const mappedProducts = mapProductsFromDB(allProducts);
-        setProducts(mappedProducts);
-
-        console.log(`Fetched ${count} products so far...`);
+        // Show progress only on a cold load. When revalidating silently (cache
+        // already on screen) we set once at the end to avoid a 2101->1000->2101 flicker.
+        if (!silent) setProducts(mapProductsFromDB(allProducts));
       }
 
-      console.log(`Successfully fetched all ${allProducts.length} products`);
+      setProducts(mapProductsFromDB(allProducts));
       setError(null);
     } catch (err: any) {
       const handledError = supabase.handleError(err);
@@ -80,7 +81,23 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    loadProducts();
+    // Hydrate instantly from the per-session cache, then revalidate in the
+    // background so a refresh doesn't block on a full product re-download.
+    let hadCache = false;
+    try {
+      const raw = sessionStorage.getItem(PRODUCTS_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        // Cache holds already-mapped Product[] (kept in sync below), so use it directly.
+        if (Array.isArray(cached) && cached.length > 0) {
+          setProducts(cached);
+          setIsLoading(false);
+          hadCache = true;
+        }
+      }
+    } catch { /* ignore corrupt cache */ }
+
+    loadProducts(hadCache);
 
     // Subscribe to realtime changes
     const subscription = supabase
@@ -104,6 +121,15 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Keep the session cache in step with what's on screen — including optimistic
+  // price edits and realtime patches — so a refresh never flashes a stale price.
+  useEffect(() => {
+    if (products.length === 0) return;
+    try {
+      sessionStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(products));
+    } catch { /* quota exceeded / unavailable — cache is best-effort */ }
+  }, [products]);
 
   const getProduct = (artikelNr: string) => {
     return products.find(p => p.artikelNr === artikelNr);

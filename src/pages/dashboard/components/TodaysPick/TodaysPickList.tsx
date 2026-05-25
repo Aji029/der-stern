@@ -20,6 +20,7 @@ interface TodaysPickListProps {
   selectedDate: string;
   isLoading: boolean;
   error: string | null;
+  onRetry?: () => void;
   pickedItems: Set<string>;
   onToggleItem: (artikelNr: string) => void;
   onMarkAllForSupplier: (items: OrderItem[]) => void;
@@ -91,6 +92,7 @@ export function TodaysPickList({
   selectedDate,
   isLoading,
   error,
+  onRetry,
   pickedItems,
   onToggleItem,
   onMarkAllForSupplier,
@@ -188,7 +190,15 @@ export function TodaysPickList({
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-        {error}
+        <p className="mb-3">{error}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }
