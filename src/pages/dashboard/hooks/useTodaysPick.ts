@@ -11,7 +11,7 @@ export interface GroupedOrders {
 }
 
 export function useTodaysPick(selectedDate: string) {
-  const { orders, isLoading: ordersLoading } = useOrders();
+  const { orders, isLoading: ordersLoading, error: ordersError, refreshOrders } = useOrders();
   const { suppliers } = useSuppliers();
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +84,7 @@ export function useTodaysPick(selectedDate: string) {
   return {
     groupedOrders,
     isLoading: ordersLoading, // Don't block on suppliersLoading — items show immediately, names resolve when suppliers load
-    error,
+    error: error || ordersError, // surface a failed/timed-out orders fetch, not just processing errors
+    refreshOrders,
   };
 }

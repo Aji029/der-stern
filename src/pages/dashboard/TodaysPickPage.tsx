@@ -10,7 +10,7 @@ export function TodaysPickPage() {
   const today = formatDateForInput(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const { groupedOrders, isLoading, error } = useTodaysPick(selectedDate);
+  const { groupedOrders, isLoading, error, refreshOrders } = useTodaysPick(selectedDate);
   const { suppliers } = useSuppliers();
   const { pickedItems, toggleItem, markAllForSupplier, unmarkAllForSupplier, clearAll } =
     usePickedItems(selectedDate);
@@ -77,6 +77,7 @@ export function TodaysPickPage() {
         selectedDate={selectedDate}
         isLoading={isLoading}
         error={error}
+        onRetry={() => refreshOrders()}
         pickedItems={pickedItems}
         onToggleItem={toggleItem}
         onMarkAllForSupplier={markAllForSupplier}
