@@ -133,10 +133,10 @@ export async function updateProduct(artikelNr: string, product: Omit<Product, 'i
         supplier_id: product.supplierId,
         ist_bestand: product.istBestand || 0,
         bestellnummer: product.bestellnummer,
+        user_id: user.id,
         ...(imageUrl && { image_url: imageUrl })
       })
-      .eq('artikel_nr', artikelNr)
-      .eq('user_id', user.id);
+      .eq('artikel_nr', artikelNr);
 
     if (error) throw error;
   } catch (error) {

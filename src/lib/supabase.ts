@@ -149,9 +149,11 @@ export const updatePriceDirectly = async (
   price: number,
   priceType: 'ek_price' | 'vk_price'
 ): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data, error } = await supabase
     .from('products')
-    .update({ [priceType]: price })
+    .update({ [priceType]: price, user_id: user?.id })
     .eq('artikel_nr', artikelNr)
     .select('artikel_nr');
 
