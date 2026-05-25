@@ -137,7 +137,7 @@ export function useBillAnalysis() {
       }
 
       const base64Data = await fileToBase64(file);
-      const aliases = getAliases(supplierId);
+      const aliases = await getAliases(supplierId);
 
       // Gemini supports both images and PDFs via the same inlineData API
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);

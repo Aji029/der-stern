@@ -123,7 +123,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
       for (const match of selected) {
         await updatePriceAndOrders(match.artikelNr, match.newEkPrice);
         // Remember this invoice text -> product mapping so future scans recognise it.
-        saveAlias(supplierId, match.invoiceDescription, match.artikelNr);
+        await saveAlias(supplierId, match.invoiceDescription, match.artikelNr);
         count++;
       }
       setAppliedCount(count);
