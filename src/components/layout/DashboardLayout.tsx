@@ -26,6 +26,7 @@ import { MobileNav } from './MobileNav';
 import { BottomTabBar } from './BottomTabBar';
 import { useSidebar } from '../../hooks/useSidebar';
 import { GlobalSearch } from './GlobalSearch';
+import { ErrorBoundary } from '../ErrorBoundary';
 
 export const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -218,7 +219,9 @@ export function DashboardLayout() {
           {/* Main content area — extra bottom padding on mobile for bottom tab bar */}
           <div className="flex-1 overflow-auto">
             <div className="p-6 pb-24 lg:pb-6">
-              <Outlet />
+              <ErrorBoundary resetKey={location.pathname}>
+                <Outlet />
+              </ErrorBoundary>
             </div>
           </div>
         </div>
