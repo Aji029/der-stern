@@ -235,6 +235,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
           shipping_address: order.shippingAddress,
           notes: order.notes,
           discount: order.discount || null,
+          user_id: user.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
