@@ -161,6 +161,34 @@ export const updatePriceDirectly = async (
   if (!data || data.length === 0) {
     throw new Error(`Price update failed: product "${artikelNr}" not found or access denied.`);
   }
+
+  // Cascade the new price to order_items on active (Pending/Processing) orders.
+  // A DB trigger used to do this, but it is unreliable in production — without
+  // this, Today's Pick (which reads order_items) reverts the change on refresh.
+  const { data: items, error: itemsError } = await supabase
+    .from('order_items')
+    .select('id, quantity, order:orders!inner(status)')
+    .eq('product_id', artikelNr)
+    .in('order.status', ['Pending', 'Processing']);
+
+  if (itemsError) throw itemsError;
+  if (!items || items.length === 0) return;
+
+  if (priceType === 'vk_price') {
+    // total depends on vk_price, so recompute it per row
+    await Promise.all(items.map((item: any) =>
+      supabase
+        .from('order_items')
+        .update({ vk_price: price, total: Number((Number(item.quantity) * price).toFixed(2)) })
+        .eq('id', item.id)
+    ));
+  } else {
+    const { error: cascadeError } = await supabase
+      .from('order_items')
+      .update({ ek_price: price })
+      .in('id', items.map((i: any) => i.id));
+    if (cascadeError) throw cascadeError;
+  }
 };
 
 // Request queue for handling offline/online transitions
