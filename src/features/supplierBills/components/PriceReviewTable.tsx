@@ -6,19 +6,24 @@ import type { ExtractedPriceMatch, UnmatchedItem } from '../types';
 interface PriceReviewTableProps {
   matches: ExtractedPriceMatch[];
   unmatched: UnmatchedItem[];
+  supplierProducts: { artikelNr: string; name: string }[];
   onToggleItem: (artikelNr: string) => void;
   onToggleAll: (selected: boolean) => void;
   onChangeNewPrice: (artikelNr: string, price: number) => void;
+  onAssignUnmatched: (invoiceDescription: string, price: number, artikelNr: string) => void;
 }
 
 export function PriceReviewTable({
   matches,
   unmatched,
+  supplierProducts,
   onToggleItem,
   onToggleAll,
   onChangeNewPrice,
+  onAssignUnmatched,
 }: PriceReviewTableProps) {
   const [showUnmatched, setShowUnmatched] = useState(false);
+  const sortedProducts = [...supplierProducts].sort((a, b) => a.name.localeCompare(b.name));
 
   const selectedCount = matches.filter(m => m.selected).length;
   const allSelected = matches.length > 0 && selectedCount === matches.length;
@@ -164,7 +169,7 @@ export function PriceReviewTable({
             onClick={() => setShowUnmatched(!showUnmatched)}
             className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors"
           >
-            <span>Unmatched items ({unmatched.length}) — not in our catalog</span>
+            <span>Unmatched items ({unmatched.length}) — assign to teach future scans</span>
             {showUnmatched
               ? <ChevronDown className="w-4 h-4" />
               : <ChevronRight className="w-4 h-4" />
@@ -173,11 +178,24 @@ export function PriceReviewTable({
           {showUnmatched && (
             <ul className="divide-y divide-gray-100">
               {unmatched.map((item, i) => (
-                <li key={i} className="flex items-center justify-between px-3 py-2 text-xs text-gray-500">
-                  <span className="truncate flex-1">{item.invoiceDescription}</span>
-                  <span className="ml-3 font-medium text-gray-700 flex-shrink-0">
+                <li key={i} className="flex items-center gap-2 px-3 py-2 text-xs">
+                  <span className="truncate flex-1 text-gray-500">{item.invoiceDescription}</span>
+                  <span className="font-medium text-gray-700 flex-shrink-0">
                     {formatPrice(item.price)}
                   </span>
+                  <select
+                    defaultValue=""
+                    onChange={e => {
+                      if (e.target.value) onAssignUnmatched(item.invoiceDescription, item.price, e.target.value);
+                    }}
+                    className="flex-shrink-0 max-w-[150px] text-xs border border-gray-200 rounded px-1.5 py-1 bg-white text-gray-700"
+                    title="Assign this invoice line to one of your products"
+                  >
+                    <option value="">Assign to…</option>
+                    {sortedProducts.map(p => (
+                      <option key={p.artikelNr} value={p.artikelNr}>{p.name}</option>
+                    ))}
+                  </select>
                 </li>
               ))}
             </ul>

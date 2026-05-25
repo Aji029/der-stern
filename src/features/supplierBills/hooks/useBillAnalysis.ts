@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Product } from '../../../types/product';
-import type { BillAnalysisResult, ExtractedPriceMatch } from '../types';
+import type { BillAnalysisResult, ExtractedPriceMatch, UnmatchedItem } from '../types';
+import { getAliases, normalizeInvoiceText } from '../aliasStore';
 
 // Gemini's free tier has per-minute and per-day caps. Short bursts (a few quick
 // scans) trip the per-minute limit; retrying after a brief wait recovers from those.
@@ -61,41 +62,55 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function buildPrompt(supplierName: string, products: Product[]): string {
+function buildPrompt(
+  supplierName: string,
+  products: Product[],
+  aliases: Record<string, string>
+): string {
+  // Format: artikelNr | supplierArticleNo | name — the supplier article number
+  // (bestellnummer) is often printed on the invoice and is a near-exact key.
   const productList = products
-    .map(p => `${p.artikelNr} | ${p.name}`)
+    .map(p => `${p.artikelNr} | ${p.bestellnummer || '-'} | ${p.name}`)
     .join('\n');
+
+  const aliasEntries = Object.entries(aliases);
+  const aliasBlock = aliasEntries.length
+    ? `\n\nPreviously CONFIRMED matches for this supplier (invoice text => our artikelNr). Trust these strongly when the invoice text is the same or very similar:\n${aliasEntries
+        .map(([txt, art]) => `"${txt}" => ${art}`)
+        .join('\n')}`
+    : '';
 
   return `You are analysing a supplier invoice for ${supplierName}.
 
-Here are all our products from this supplier:
-${productList}
+Our products from this supplier (format: artikelNr | supplierArticleNo | name):
+${productList}${aliasBlock}
 
-Extract ALL product prices from this invoice and match them to our product catalog above.
-Return ONLY valid JSON with no explanation, markdown, or extra text:
+Extract EVERY product line item with its price from this invoice and match each one to ONE of our products above.
+
+Matching rules, in priority order:
+1. If a previously confirmed match applies, use that artikelNr.
+2. If the invoice shows a supplier article number equal to our supplierArticleNo, match it — even if the product name is written differently.
+3. Otherwise match by MEANING, not exact text. Treat these as the SAME product:
+   - abbreviations and different word order ("Coca Cola 0,33 Dose" = "Cola 33cl can")
+   - packaging / unit wording ("18x500ml" = "0,5L 18er", "Kiste" = "case")
+   - brand + variant differences, accents, capitalisation, extra or missing words
+   Be generous: if it is clearly the same article, match it. Use confidence "high", "medium", or "low".
+4. Put an item in "unmatched" ONLY if it genuinely is not one of our products.
+
+Return ONLY valid JSON, no markdown, no commentary:
 {
   "matches": [
-    {
-      "artikelNr": "735881",
-      "invoiceDescription": "Vio Wasser 18x500ml",
-      "newEkPrice": 6.20,
-      "confidence": "high"
-    }
+    { "artikelNr": "735881", "invoiceDescription": "Vio Wasser 18x500ml", "newEkPrice": 6.20, "confidence": "high" }
   ],
   "unmatched": [
-    {
-      "invoiceDescription": "Some product not in our catalog",
-      "price": 0.00
-    }
+    { "invoiceDescription": "Some product not in our catalog", "price": 0.00 }
   ]
 }
 
 Rules:
-- Match only by artikelNr (if visible) or product name similarity
-- Use "low" confidence if you are unsure of the match
+- "artikelNr" in every match MUST be one of ours from the list above
 - newEkPrice must be the unit/carton price in EUR (number only, no currency symbol)
-- Only include products you can find on the invoice
-- If a product from the invoice is not in our catalog, add it to "unmatched"`;
+- Only include products you can find on the invoice`;
 }
 
 export function useBillAnalysis() {
@@ -106,7 +121,8 @@ export function useBillAnalysis() {
   const analyse = async (
     file: File,
     supplierProducts: Product[],
-    supplierName: string
+    supplierName: string,
+    supplierId: string
   ): Promise<BillAnalysisResult | null> => {
     setIsAnalysing(true);
     setError(null);
@@ -121,6 +137,7 @@ export function useBillAnalysis() {
       }
 
       const base64Data = await fileToBase64(file);
+      const aliases = getAliases(supplierId);
 
       // Gemini supports both images and PDFs via the same inlineData API
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
@@ -133,7 +150,7 @@ export function useBillAnalysis() {
             mimeType: file.type,
           },
         },
-        buildPrompt(supplierName, supplierProducts),
+        buildPrompt(supplierName, supplierProducts, aliases),
       ]);
 
       // A quota-starved or safety-blocked call can come back with no candidates;
@@ -175,9 +192,31 @@ export function useBillAnalysis() {
         })
         .filter((m): m is ExtractedPriceMatch => m !== null);
 
+      // Local alias recovery: catch confirmed mappings the model may have missed,
+      // moving them out of "unmatched" into matches.
+      const recovered: ExtractedPriceMatch[] = [];
+      const stillUnmatched: UnmatchedItem[] = [];
+      for (const u of (parsed.unmatched || [])) {
+        const art = aliases[normalizeInvoiceText(u.invoiceDescription)];
+        const product = art ? supplierProducts.find(p => p.artikelNr === art) : undefined;
+        if (product && !enrichedMatches.some(m => m.artikelNr === product.artikelNr)) {
+          recovered.push({
+            artikelNr: product.artikelNr,
+            productName: product.name,
+            invoiceDescription: u.invoiceDescription,
+            currentEkPrice: product.ekPrice,
+            newEkPrice: Number(u.price) || product.ekPrice,
+            confidence: 'high',
+            selected: true,
+          });
+        } else {
+          stillUnmatched.push(u);
+        }
+      }
+
       const analysisResult: BillAnalysisResult = {
-        matches: enrichedMatches,
-        unmatched: parsed.unmatched || [],
+        matches: [...enrichedMatches, ...recovered],
+        unmatched: stillUnmatched,
       };
 
       setResult(analysisResult);

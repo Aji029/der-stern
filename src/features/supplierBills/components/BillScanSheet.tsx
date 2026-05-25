@@ -4,7 +4,8 @@ import { useProducts } from '../../../context/ProductContext';
 import { useEKPriceUpdate } from '../../../hooks/useEKPriceUpdate';
 import { useBillAnalysis } from '../hooks/useBillAnalysis';
 import { PriceReviewTable } from './PriceReviewTable';
-import type { BillScanStep } from '../types';
+import { saveAlias } from '../aliasStore';
+import type { BillScanStep, ExtractedPriceMatch } from '../types';
 
 interface BillScanSheetProps {
   supplierId: string;
@@ -50,7 +51,7 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
   const handleAnalyse = async () => {
     if (!file) return;
     setStep('analysing');
-    const analysisResult = await analyse(file, supplierProducts, supplierName);
+    const analysisResult = await analyse(file, supplierProducts, supplierName, supplierId);
     if (analysisResult) {
       setStep('review');
     } else {
@@ -86,6 +87,28 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
     });
   };
 
+  // Manually assign an unmatched invoice line to one of our products. This both
+  // turns it into an applicable match and (on apply) teaches the alias memory.
+  const handleAssignUnmatched = (invoiceDescription: string, price: number, artikelNr: string) => {
+    if (!result) return;
+    const product = supplierProducts.find(p => p.artikelNr === artikelNr);
+    if (!product) return;
+    const newMatch: ExtractedPriceMatch = {
+      artikelNr: product.artikelNr,
+      productName: product.name,
+      invoiceDescription,
+      currentEkPrice: product.ekPrice,
+      newEkPrice: price || product.ekPrice,
+      confidence: 'high',
+      selected: true,
+    };
+    setResult({
+      ...result,
+      matches: [...result.matches.filter(m => m.artikelNr !== artikelNr), newMatch],
+      unmatched: result.unmatched.filter(u => u.invoiceDescription !== invoiceDescription),
+    });
+  };
+
   const handleApply = async () => {
     if (!result) return;
     const selected = result.matches.filter(m => m.selected);
@@ -99,6 +122,8 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
     try {
       for (const match of selected) {
         await updatePriceAndOrders(match.artikelNr, match.newEkPrice);
+        // Remember this invoice text -> product mapping so future scans recognise it.
+        saveAlias(supplierId, match.invoiceDescription, match.artikelNr);
         count++;
       }
       setAppliedCount(count);
@@ -282,9 +307,11 @@ export function BillScanSheet({ supplierId, supplierName, onClose }: BillScanShe
                 <PriceReviewTable
                   matches={result.matches}
                   unmatched={result.unmatched}
+                  supplierProducts={supplierProducts}
                   onToggleItem={handleToggleItem}
                   onToggleAll={handleToggleAll}
                   onChangeNewPrice={handleChangeNewPrice}
+                  onAssignUnmatched={handleAssignUnmatched}
                 />
               )}
               {applyError && (
