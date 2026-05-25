@@ -3,6 +3,50 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Product } from '../../../types/product';
 import type { BillAnalysisResult, ExtractedPriceMatch } from '../types';
 
+// Gemini's free tier has per-minute and per-day caps. Short bursts (a few quick
+// scans) trip the per-minute limit; retrying after a brief wait recovers from those.
+const RETRYABLE = /RESOURCE_EXHAUSTED|rate.?limit|quota|overloaded|UNAVAILABLE|try again/i;
+
+function isRetryable(err: any): boolean {
+  const status = err?.status ?? err?.response?.status;
+  return status === 429 || status === 503 || RETRYABLE.test(String(err?.message ?? ''));
+}
+
+function friendlyAiError(err: any): string {
+  const msg = String(err?.message ?? '');
+  const status = err?.status ?? err?.response?.status;
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(msg)) {
+    return "The free AI limit was reached. Wait a minute and try again — if it keeps happening, you've likely used up today's free quota.";
+  }
+  if (status === 503 || /overloaded|UNAVAILABLE/i.test(msg)) {
+    return 'The AI service is busy right now. Please try again in a moment.';
+  }
+  if (status === 400 || status === 401 || status === 403 || /API[_ ]?key|permission/i.test(msg)) {
+    return 'There is a problem with the AI key configuration. Please check the Gemini API key in the deploy settings.';
+  }
+  return msg || 'Failed to analyse the bill. Please try again.';
+}
+
+async function generateWithRetry(
+  model: { generateContent: (parts: any) => Promise<any> },
+  parts: any,
+  retries = 3
+): Promise<any> {
+  let lastErr: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await model.generateContent(parts);
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryable(err) || attempt === retries) throw err;
+      // Backoff: 2s, 4s, 8s … (capped). The "analysing" spinner covers the wait.
+      const waitMs = Math.min(2000 * 2 ** attempt, 30000);
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+    }
+  }
+  throw lastErr;
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -19,7 +63,7 @@ function fileToBase64(file: File): Promise<string> {
 
 function buildPrompt(supplierName: string, products: Product[]): string {
   const productList = products
-    .map(p => `${p.artikelNr} | ${p.name} | Current EK: €${p.ekPrice.toFixed(2)}`)
+    .map(p => `${p.artikelNr} | ${p.name}`)
     .join('\n');
 
   return `You are analysing a supplier invoice for ${supplierName}.
@@ -82,7 +126,7 @@ export function useBillAnalysis() {
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-      const result = await model.generateContent([
+      const result = await generateWithRetry(model, [
         {
           inlineData: {
             data: base64Data,
@@ -92,12 +136,21 @@ export function useBillAnalysis() {
         buildPrompt(supplierName, supplierProducts),
       ]);
 
-      const rawText = result.response.text();
+      // A quota-starved or safety-blocked call can come back with no candidates;
+      // guard before reading .text() so it surfaces a clear message, not a crash.
+      const response = result?.response;
+      if (!response || !response.candidates || response.candidates.length === 0) {
+        throw new Error(
+          'The AI returned an empty response. This usually means the free limit was hit — wait a minute and try again.'
+        );
+      }
+
+      const rawText = response.text();
 
       // Extract JSON — handle any wrapping markdown code fences
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('Could not parse AI response. Please try again.');
+        throw new Error('Could not read the prices from this bill. Try a clearer photo or a different file.');
       }
 
       const parsed = JSON.parse(jsonMatch[0]) as {
@@ -130,9 +183,7 @@ export function useBillAnalysis() {
       setResult(analysisResult);
       return analysisResult;
     } catch (err: any) {
-      const message =
-        err?.message || 'Failed to analyse the bill. Please check your API key and try again.';
-      setError(message);
+      setError(friendlyAiError(err));
       return null;
     } finally {
       setIsAnalysing(false);
