@@ -3,7 +3,6 @@ import { Package, Loader, FileText, ScanLine, CheckCircle2, X, ChevronDown } fro
 const BillScanSheet = lazy(() =>
   import('../../../../features/supplierBills/components/BillScanSheet').then(m => ({ default: m.BillScanSheet }))
 );
-import { pdf } from '@react-pdf/renderer';
 import { EditableEKPrice } from '../../../../components/ui/EditableEKPrice';
 import { formatDateForDisplay } from '../../../../utils/dateFormatting';
 import { formatPrice } from '../../../../utils/priceCalculations';
@@ -13,7 +12,6 @@ import { useSupplierUpdate } from '../../../../hooks/useSupplierUpdate';
 import { useSuppliers } from '../../../../context/SupplierContext';
 import { SupplierSummary } from './SupplierSummary';
 import { PDFButton } from './PDFButton';
-import { SimplifiedPickPDF } from './SimplifiedPickPDF';
 import type { GroupedOrders } from '../../hooks/useTodaysPick';
 import type { OrderItem } from '../../../../types/order';
 
@@ -118,6 +116,10 @@ export function TodaysPickList({
 
   const handleSimplifiedPDF = async (group: GroupedOrders) => {
     try {
+      const [{ pdf }, { SimplifiedPickPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./SimplifiedPickPDF'),
+      ]);
       const blob = await pdf(
         <SimplifiedPickPDF
           groupedOrders={[group]}
@@ -139,6 +141,10 @@ export function TodaysPickList({
 
   const handleSimplifiedAllPDF = async () => {
     try {
+      const [{ pdf }, { SimplifiedPickPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./SimplifiedPickPDF'),
+      ]);
       const blob = await pdf(
         <SimplifiedPickPDF
           groupedOrders={groupedOrders}
