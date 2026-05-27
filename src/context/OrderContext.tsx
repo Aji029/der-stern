@@ -251,7 +251,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
       const existingIds = (existingItems ?? []).map(r => r.id);
 
-      // INSERT new items FIRST — if this fails, old items are still intact
+      // INSERT new items FIRST — if this fails, old items are still intact.
+      // We .select('id') so we can roll the inserts back if the subsequent delete fails.
       const orderItems = order.items.map(item => ({
         order_id: id,
         product_id: item.product.artikelNr,
@@ -267,18 +268,29 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         user_id: user.id
       }));
 
-      const { error: itemsError } = await supabase
+      const { data: insertedItems, error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItems);
+        .insert(orderItems)
+        .select('id');
 
       if (itemsError) throw itemsError;
 
-      // Delete old items only AFTER the insert succeeded
+      // Delete old items only AFTER the insert succeeded. If THIS step fails we
+      // must undo the inserts — otherwise the old rows and the new rows coexist
+      // and the order shows duplicates of every previous item.
       if (existingIds.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('order_items')
           .delete()
           .in('id', existingIds);
+
+        if (deleteError) {
+          const newIds = (insertedItems ?? []).map(r => r.id);
+          if (newIds.length > 0) {
+            await supabase.from('order_items').delete().in('id', newIds);
+          }
+          throw deleteError;
+        }
       }
 
       await fetchOrders();
