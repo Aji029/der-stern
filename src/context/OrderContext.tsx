@@ -122,32 +122,9 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchOrders();
-
-    // Realtime subscription — debounced re-fetch when orders table changes
-    const debounce = { timer: null as ReturnType<typeof setTimeout> | null };
-
-    const subscription = supabase
-      .channel('orders_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        if (debounce.timer) clearTimeout(debounce.timer);
-        debounce.timer = setTimeout(() => fetchOrders(true), 800);
-      })
-      .subscribe();
-
-    // Also listen to order_items — so EK/VK price writes are confirmed via re-fetch
-    const orderItemsSub = supabase
-      .channel('order_items_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
-        if (debounce.timer) clearTimeout(debounce.timer);
-        debounce.timer = setTimeout(() => fetchOrders(true), 800);
-      })
-      .subscribe();
-
-    return () => {
-      if (debounce.timer) clearTimeout(debounce.timer);
-      subscription.unsubscribe();
-      orderItemsSub.unsubscribe();
-    };
+    // Realtime subscriptions disabled: Supabase Realtime is rejecting the
+    // WebSocket handshake with HTTP 400, and the constant reconnect loop was
+    // freezing the page. Restore once Realtime is re-enabled in the project.
   }, []);
 
   const addOrder = async (order: Omit<Order, 'id'>) => {
