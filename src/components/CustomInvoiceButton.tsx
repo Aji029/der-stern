@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from './ui/Button';
-import { CustomInvoicePDF } from './pdf/CustomInvoicePDF';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { supabase } from '../lib/supabase';
 import type { Order } from '../types/order';
@@ -13,35 +11,34 @@ interface CustomInvoiceButtonProps {
   children?: React.ReactNode;
 }
 
-const INVOICE_SEQUENCE_KEY = 'invoice_sequence';
-
-export function CustomInvoiceButton({ order, className = "", children }: CustomInvoiceButtonProps) {
+// On-click PDF generation; see InvoiceButton for rationale.
+export function CustomInvoiceButton({ order, className = '', children }: CustomInvoiceButtonProps) {
   const [generatedInvoices, setGeneratedInvoices] = useLocalStorage<Record<string, string>>(
     'generated_invoices',
     {}
   );
   const [latestCustomer, setLatestCustomer] = useState<Customer | null>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const isGenerated = order.id in generatedInvoices;
   const invoiceNumber = isGenerated ? generatedInvoices[order.id] : order.id;
 
   useEffect(() => {
-    fetchLatestCustomerData();
-  }, [order.customer.id]);
-
-  const fetchLatestCustomerData = async () => {
+    let cancelled = false;
     setIsLoadingCustomer(true);
-    try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', order.customer.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) {
-        const mappedCustomer: Customer = {
+    supabase
+      .from('customers')
+      .select('*')
+      .eq('id', order.customer.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setLatestCustomer(order.customer);
+          return;
+        }
+        setLatestCustomer({
           id: data.id,
           companyName: data.company_name,
           contactPerson: data.contact_person,
@@ -49,30 +46,39 @@ export function CustomInvoiceButton({ order, className = "", children }: CustomI
           phone: data.phone || '',
           address: data.address || '',
           idNumber: data.id_number || '',
-          billingAddress: data.billing_address || ''
-        };
-        setLatestCustomer(mappedCustomer);
-      }
-    } catch (error) {
-      console.error('Failed to fetch customer data:', error);
-      setLatestCustomer(order.customer);
-    } finally {
-      setIsLoadingCustomer(false);
-    }
-  };
+          billingAddress: data.billing_address || '',
+        });
+      })
+      .catch(() => { if (!cancelled) setLatestCustomer(order.customer); })
+      .finally(() => { if (!cancelled) setIsLoadingCustomer(false); });
+    return () => { cancelled = true; };
+  }, [order.customer.id]);
 
-  const handleGenerateInvoice = async () => {
+  const handleClick = async () => {
     if (!isGenerated) {
-      try {
-        // Use order ID directly as invoice number
-        const number = order.id;
-        setGeneratedInvoices(prev => ({
-          ...prev,
-          [order.id]: number
-        }));
-      } catch (error) {
-        console.error('Failed to generate invoice number:', error);
-      }
+      setGeneratedInvoices(prev => ({ ...prev, [order.id]: order.id }));
+    }
+    const orderWithLatestCustomer = latestCustomer
+      ? { ...order, customer: latestCustomer }
+      : order;
+    setLoading(true);
+    try {
+      const [{ pdf }, { CustomInvoicePDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./pdf/CustomInvoicePDF'),
+      ]);
+      const blob = await pdf(<CustomInvoicePDF order={orderWithLatestCustomer} invoiceNumber={order.id} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rechnung-${invoiceNumber || order.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Custom invoice PDF failed', e);
+      alert('Failed to generate Rechnung. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,27 +86,16 @@ export function CustomInvoiceButton({ order, className = "", children }: CustomI
     isGenerated ? 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100 hover:border-green-300' : ''
   }`;
 
-  const orderWithLatestCustomer = latestCustomer
-    ? { ...order, customer: latestCustomer }
-    : order;
-
   return (
-    <PDFDownloadLink
-      document={<CustomInvoicePDF order={orderWithLatestCustomer} invoiceNumber={order.id} />}
-      fileName={`rechnung-${invoiceNumber || order.id}.pdf`}
-      onClick={handleGenerateInvoice}
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading || isLoadingCustomer}
+      className={buttonClasses}
+      title="Rechnung"
+      onClick={handleClick}
     >
-      {({ loading }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={loading || isLoadingCustomer}
-          className={buttonClasses}
-          title="Rechnung"
-        >
-          {children}
-        </Button>
-      )}
-    </PDFDownloadLink>
+      {children}
+    </Button>
   );
 }

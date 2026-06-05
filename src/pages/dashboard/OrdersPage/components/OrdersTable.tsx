@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -11,10 +11,48 @@ import { EditablePrice } from '../../../../components/ui/EditablePrice';
 import { ProfitMarginDisplay } from '../../../../components/ProfitMarginDisplay';
 import { useOrders } from '../context/OrdersContext';
 import { useSuppliers } from '../../../../context/SupplierContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { OrderPDF } from '../../../../components/OrderPDF';
 import { validatePrices } from '../../../../utils/priceCalculations';
 import { useNavigate } from 'react-router-dom';
+
+// On-click PDF generation. PDFDownloadLink generated its PDF on MOUNT, so each
+// rendered row would kick off a heavy @react-pdf render the moment the page
+// loaded — freezing the JS thread on mobile and making the page unclickable.
+function OrderPDFButton({ order }: { order: any }) {
+  const [loading, setLoading] = useState(false);
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const [{ pdf }, { OrderPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('../../../../components/OrderPDF'),
+      ]);
+      const blob = await pdf(<OrderPDF order={order} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-${order.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('PDF generation failed', e);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading}
+      onClick={handleDownload}
+      className="flex-1 min-w-[100px]"
+    >
+      <FileText className="h-4 w-4 mr-1 text-blue-500" />
+      {loading ? 'Loading...' : 'PDF'}
+    </Button>
+  );
+}
 
 const columnHelper = createColumnHelper<any>();
 
@@ -135,20 +173,7 @@ export function OrdersTable() {
           >
             <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
-          <PDFDownloadLink
-            document={<OrderPDF order={info.row.original} />}
-            fileName={`order-${info.row.original.id}.pdf`}
-          >
-            {({ loading }) => (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={loading}
-              >
-                <FileText className="h-4 w-4 text-blue-500" />
-              </Button>
-            )}
-          </PDFDownloadLink>
+          <OrderPDFButton order={info.row.original} />
         </div>
       ),
     }),
@@ -321,23 +346,7 @@ export function OrdersTable() {
                 <Trash2 className="h-4 w-4 mr-1 text-red-500" />
                 Delete
               </Button>
-              <PDFDownloadLink
-                document={<OrderPDF order={order} />}
-                fileName={`order-${order.id}.pdf`}
-                className="flex-1 min-w-[100px]"
-              >
-                {({ loading }) => (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    <FileText className="h-4 w-4 mr-1 text-blue-500" />
-                    PDF
-                  </Button>
-                )}
-              </PDFDownloadLink>
+              <OrderPDFButton order={order} />
             </div>
           </div>
         ))}
