@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Truck } from 'lucide-react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from './ui/Button';
-import { DeliveryNotePDF } from './pdf/DeliveryNotePDF/index';
 import type { Order } from '../types/order';
 
 interface DeliveryNoteButtonProps {
@@ -10,23 +8,40 @@ interface DeliveryNoteButtonProps {
   className?: string;
 }
 
-export function DeliveryNoteButton({ order, className = "" }: DeliveryNoteButtonProps) {
+// On-click PDF generation; see InvoiceButton for rationale.
+export function DeliveryNoteButton({ order, className = '' }: DeliveryNoteButtonProps) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const [{ pdf }, { DeliveryNotePDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./pdf/DeliveryNotePDF/index'),
+      ]);
+      const blob = await pdf(<DeliveryNotePDF order={order} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lieferschein-${order.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Delivery note PDF failed', e);
+      alert('Failed to generate delivery note. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
-    <PDFDownloadLink
-      document={<DeliveryNotePDF order={order} />}
-      fileName={`lieferschein-${order.id}.pdf`}
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading}
+      className={className}
+      title="Lieferschein"
+      onClick={handleClick}
     >
-      {({ loading }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={loading}
-          className={className}
-          title="Lieferschein"
-        >
-          <Truck className="h-4 w-4" />
-        </Button>
-      )}
-    </PDFDownloadLink>
+      <Truck className="h-4 w-4" />
+    </Button>
   );
 }

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from './ui/Button';
-import { RechnungPDF } from './pdf/RechnungPDF';
 import { supabase } from '../lib/supabase';
 import type { Order } from '../types/order';
 import type { Customer } from '../types/customer';
@@ -12,9 +10,11 @@ interface RechnungButtonProps {
   children?: React.ReactNode;
 }
 
+// On-click PDF generation; see InvoiceButton for rationale.
 export function RechnungButton({ order, className = '', children }: RechnungButtonProps) {
   const [latestCustomer, setLatestCustomer] = useState<Customer | null>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,26 +42,39 @@ export function RechnungButton({ order, className = '', children }: RechnungButt
     return () => { cancelled = true; };
   }, [order.customer.id]);
 
-  const orderWithCustomer = latestCustomer
-    ? { ...order, customer: latestCustomer }
-    : order;
+  const handleClick = async () => {
+    const orderWithCustomer = latestCustomer ? { ...order, customer: latestCustomer } : order;
+    setLoading(true);
+    try {
+      const [{ pdf }, { RechnungPDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./pdf/RechnungPDF'),
+      ]);
+      const blob = await pdf(<RechnungPDF order={orderWithCustomer} invoiceNumber={order.id} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rechnung-${order.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Rechnung PDF failed', e);
+      alert('Failed to generate Rechnung. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <PDFDownloadLink
-      document={<RechnungPDF order={orderWithCustomer} invoiceNumber={order.id} />}
-      fileName={`rechnung-${order.id}.pdf`}
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading || isLoadingCustomer}
+      className={className}
+      title="Rechnung PDF"
+      onClick={handleClick}
     >
-      {({ loading }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={loading || isLoadingCustomer}
-          className={className}
-          title="Rechnung PDF"
-        >
-          {children}
-        </Button>
-      )}
-    </PDFDownloadLink>
+      {children}
+    </Button>
   );
 }
