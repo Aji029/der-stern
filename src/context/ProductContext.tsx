@@ -79,27 +79,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadProducts();
 
-    // Subscribe to realtime changes
-    const subscription = supabase
-      .channel('products_changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, (payload) => {
-        // Incremental update — apply payload.new directly to avoid race with optimistic updates
-        const updated = payload.new as any;
-        setProducts(prev =>
-          prev.map(p => p.artikelNr === updated.artikel_nr ? mapProductFromDB(updated) : p)
-        );
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' }, () => {
-        loadProducts();
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, () => {
-        loadProducts();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Realtime subscriptions were causing a tight WebSocket reconnect loop
+    // (Supabase Realtime returned 400 on handshake) that froze the page. Disabled
+    // for now — refresh the page or re-save to see changes from other sessions.
   }, []);
 
   const getProduct = (artikelNr: string) => {
