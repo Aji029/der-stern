@@ -276,6 +276,15 @@ export default function InvoiceReview() {
             Preisänderungen
           </h3>
           <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wide text-gray-400">
+                <th className="w-6" />
+                <th className="text-left font-medium py-1">Artikel</th>
+                <th className="text-right font-medium py-1">Bisher</th>
+                <th className="text-right font-medium py-1 pl-3">Neu</th>
+                <th className="text-right font-medium py-1 pl-3">Δ</th>
+              </tr>
+            </thead>
             <tbody>
               {changes.map(c => (
                   <tr key={c.art_nr} className="border-b border-gray-100 last:border-0">
