@@ -112,7 +112,13 @@ async function callClaude(
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 16000,
-      temperature: 0,
+      // No temperature: sampling parameters were removed on this model
+      // generation — sending `temperature: 0` to claude-sonnet-5 is a 400,
+      // not a no-op. The two passes are independent readings instead, which
+      // strengthens the consensus check rather than weakening it: at
+      // temperature 0 a confidently misread digit reads the same way twice
+      // and sails through the comparison, while independent readings disagree
+      // exactly where the paper is genuinely ambiguous.
       system: SYSTEM,
       messages: [{ role: 'user', content }],
     }),

@@ -115,8 +115,12 @@ approach zero and the morning job is: photograph, glance, approve.
 
 ## How a bad photo is caught
 
-1. **Two passes.** The same photos go to Claude twice at `temperature: 0`. A
-   smudged digit read two different ways shows up as a conflict.
+1. **Two passes.** The same photos go to Claude twice as independent readings.
+   A smudged digit read two different ways shows up as a conflict.
+   (Not `temperature: 0` — sampling parameters were removed on this model
+   generation and sending one to `claude-sonnet-5` is a 400. Independent
+   readings are the stronger check anyway: at temperature 0 a confidently
+   misread digit reads the same way twice and sails through the comparison.)
 2. **Line arithmetic.** `a_kolli × inh_kolli × preis = betrag` on every line.
 3. **Bon subtotals.** Hamberger prints them; they must match.
 4. **Warenwert.** All goods lines must sum to the printed total.
