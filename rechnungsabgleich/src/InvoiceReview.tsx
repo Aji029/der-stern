@@ -2,12 +2,17 @@
  * InvoiceReview.tsx
  *
  * The only screen you touch each morning. Shows what changed, nothing else.
- * Nothing is written to der Stern's article table until you press Übernehmen.
+ *
+ * This app is READ-ONLY against der Stern. It reads public.products to match
+ * articles and never writes to it — no price update, no cascade into open
+ * orders, nothing that can disturb the live shop.
+ *
+ * Approving a price records it here instead. The newest approval per article
+ * becomes the baseline the next invoice is compared against, so an accepted
+ * price stops resurfacing on every future invoice.
  *
  * Adapted from the standalone reference for der Stern:
  *   - articles come from public.products, keyed by artikel_nr (there is no uuid id)
- *   - ek_price is DECIMAL(10,2), so a three-decimal supplier price rounds on the
- *     way in. The screen says so per row rather than hiding it.
  *   - only the mapped articles are loaded, not the whole table
  */
 
@@ -17,7 +22,6 @@ import { AlertTriangle, ArrowLeft, Check, Link2, RefreshCw } from 'lucide-react'
 import { supabase, sternDb, ARTICLES_TABLE, ARTICLES_KEY } from './lib/supabase';
 import {
   diffPrices,
-  round2,
   type DiffRow,
   type LineResult,
   type Mapping,
@@ -36,6 +40,8 @@ export default function InvoiceReview() {
   const [lines, setLines] = useState<LineResult[]>([]);
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [articles, setArticles] = useState<StoredArticle[]>([]);
+  // article_ids whose baseline is a previous approval here rather than der Stern
+  const [fromApproval, setFromApproval] = useState<Set<string>>(new Set());
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,19 +83,36 @@ export default function InvoiceReview() {
     // table is far too big to pull whole just to diff a few dozen prices.
     const ids = [...new Set(mappingRows.map(m => m.article_id))];
     if (ids.length > 0) {
+      // der Stern's stored price — read only, never written back.
       const { data: as_ } = await sternDb()
         .from(ARTICLES_TABLE)
         .select('artikel_nr, name, ek_price')
         .in(ARTICLES_KEY, ids);
+
+      // Prices already approved here. The newest per article wins and becomes
+      // the baseline, so an accepted change does not reappear next invoice.
+      const { data: approvals } = await supabase
+        .from('price_change_log')
+        .select('article_id, new_price, applied_at')
+        .in('article_id', ids)
+        .order('applied_at', { ascending: false });
+
+      const approved = new Map<string, number>();
+      for (const a of (approvals ?? []) as { article_id: string; new_price: number }[]) {
+        if (!approved.has(a.article_id)) approved.set(a.article_id, Number(a.new_price));
+      }
+      setFromApproval(new Set(approved.keys()));
+
       setArticles(
         (as_ ?? []).map((a: { artikel_nr: string; name: string; ek_price: number }) => ({
           article_id: a.artikel_nr,
           name: a.name,
-          ek_price: Number(a.ek_price),
+          ek_price: approved.get(a.artikel_nr) ?? Number(a.ek_price),
         })),
       );
     } else {
       setArticles([]);
+      setFromApproval(new Set());
     }
 
     setLoading(false);
@@ -118,34 +141,30 @@ export default function InvoiceReview() {
   const deliveredArtNrs = new Set(lines.map(l => l.supplier_art_nr));
   const notDelivered = mappings.filter(m => !deliveredArtNrs.has(m.supplier_art_nr));
 
+  /**
+   * Record the accepted prices. Nothing is written to der Stern — this only
+   * writes to this app's own tables, at full four-decimal precision.
+   */
   async function applyAccepted() {
     setSaving(true);
     setError(null);
     const rows = changes.filter(c => accepted.has(c.art_nr));
     const userId = (await supabase.auth.getUser()).data.user?.id ?? null;
 
-    for (const r of rows) {
-      // ek_price is DECIMAL(10,2) — round here so what we log is what got stored.
-      const stored = round2(r.new_price);
-
-      const { error: upErr } = await sternDb()
-        .from(ARTICLES_TABLE)
-        .update({ ek_price: stored, updated_at: new Date().toISOString() })
-        .eq(ARTICLES_KEY, r.article_id);
-
-      if (upErr) {
-        setError(`${r.name}: ${upErr.message}`);
-        setSaving(false);
-        return;
-      }
-
-      await supabase.from('price_change_log').insert({
+    const { error: logErr } = await supabase.from('price_change_log').insert(
+      rows.map(r => ({
         invoice_id: invoiceId,
         article_id: r.article_id,
         old_price: r.old_price,
-        new_price: stored,
+        new_price: r.new_price,
         applied_by: userId,
-      });
+      })),
+    );
+
+    if (logErr) {
+      setError(logErr.message);
+      setSaving(false);
+      return;
     }
 
     await supabase
@@ -258,10 +277,7 @@ export default function InvoiceReview() {
           </h3>
           <table className="w-full text-sm">
             <tbody>
-              {changes.map(c => {
-                const stored = round2(c.new_price);
-                const roundsAway = Math.abs(stored - c.new_price) > 1e-9;
-                return (
+              {changes.map(c => (
                   <tr key={c.art_nr} className="border-b border-gray-100 last:border-0">
                     <td className="py-2 pr-2 align-top">
                       <input
@@ -278,15 +294,15 @@ export default function InvoiceReview() {
                     <td className="py-2">
                       <div className="text-gray-900">{c.name}</div>
                       <div className="text-xs text-gray-500">Art. {c.art_nr}</div>
-                      {roundsAway && (
-                        <div className="text-xs text-amber-700 mt-0.5">
-                          {price(c.new_price)} wird als {euro(stored)} gespeichert (2 Nachkommastellen)
+                      {fromApproval.has(c.article_id) && (
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          Vergleich mit dem zuletzt hier bestätigten Preis
                         </div>
                       )}
                     </td>
-                    <td className="py-2 text-right tabular text-gray-500">{euro(c.old_price)}</td>
+                    <td className="py-2 text-right tabular text-gray-500">{price(c.old_price)}</td>
                     <td className="py-2 pl-3 text-right tabular font-medium text-gray-900">
-                      {euro(stored)}
+                      {price(c.new_price)}
                     </td>
                     <td
                       className={
@@ -295,11 +311,10 @@ export default function InvoiceReview() {
                       }
                     >
                       {c.delta > 0 ? '+' : ''}
-                      {euro(c.delta)}
+                      {price(c.delta)}
                     </td>
                   </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
           <div className="flex gap-3 pt-1">
@@ -378,11 +393,11 @@ export default function InvoiceReview() {
         >
           <Check className="w-4 h-4" />
           {saving
-            ? 'Wird übernommen…'
-            : `${accepted.size} ${accepted.size === 1 ? 'Preis' : 'Preise'} übernehmen`}
+            ? 'Wird bestätigt…'
+            : `${accepted.size} ${accepted.size === 1 ? 'Preis' : 'Preise'} bestätigen`}
         </button>
         <span className="text-xs text-gray-500">
-          Vorher wird nichts gespeichert.
+          Wird nur hier gespeichert — der Stern wird nicht verändert.
         </span>
       </div>
 

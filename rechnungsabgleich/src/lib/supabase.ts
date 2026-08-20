@@ -23,7 +23,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 /**
- * der Stern's article table. The one place this app reads and writes `public`.
+ * der Stern's article table. The one place this app touches `public` — and it
+ * only ever READS. No price update, no cascade into open orders, nothing that
+ * can disturb the live shop.
  *
  * Keyed by `artikel_nr` (TEXT). If your articles live somewhere other than
  * public.products, this constant, ARTICLES_KEY and the `Article` type in
@@ -32,7 +34,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export const ARTICLES_TABLE = 'products';
 export const ARTICLES_KEY = 'artikel_nr';
 
-/** Query der Stern's tables from the same authenticated client. */
+/** Read der Stern's tables from the same authenticated client. Reads only. */
 export const sternDb = () => supabase.schema('public');
 
 /** Invoke the extraction function with the signed-in user's token. */

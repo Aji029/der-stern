@@ -37,10 +37,11 @@ export interface Invoice {
 }
 
 /**
- * A row of der Stern's article table.
+ * A row of der Stern's article table. Read only — never written by this app.
  *
- * Keyed by artikel_nr — public.products has no uuid id. ek_price is
- * DECIMAL(10,2), which is why three-decimal supplier prices round on the way in.
+ * Keyed by artikel_nr — public.products has no uuid id. Its ek_price is
+ * DECIMAL(10,2); prices confirmed in this app keep four decimals, so nothing
+ * is lost here.
  */
 export interface Article {
   artikel_nr: string;

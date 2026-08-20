@@ -3,8 +3,12 @@
 Photograph the invoice, get a list of what changed, tap approve.
 
 The design principle throughout: **extraction is the model's job, verification is
-arithmetic's job, mapping decisions are yours.** Nothing writes to your article
-table without you pressing Apply.
+arithmetic's job, mapping decisions are yours.**
+
+This app is **read-only against der Stern.** It reads `public.products` to match
+articles and never writes to it. Confirming a price records it here, in this
+app's own tables — der Stern is not modified, no trigger fires, and no open
+order moves. Nothing about running this can disturb the live shop.
 
 ---
 
@@ -91,16 +95,18 @@ If `warenwert` does not match the paper, stop and fix before going further.
 
 ## Step 4 — Review screen
 
-Already wired: `src/InvoiceReview.tsx` reads and writes `public.products`
+Already wired: `src/InvoiceReview.tsx` **reads** `public.products`
 (`artikel_nr`, `name`, `ek_price`) through `sternDb()`, styled to match der
 Stern. Only the articles referenced by this supplier's mappings are loaded, not
 the whole product table.
 
-Two der-Stern-specific behaviours worth knowing:
+Three behaviours worth knowing:
 
-- `products.ek_price` is `DECIMAL(10,2)`. A three-decimal supplier price such as
-  0,625 rounds on the way in, so the row says so before you approve it, and the
-  audit log records what was actually stored.
+- **Confirming writes nothing to der Stern.** It records the accepted price in
+  `price_change_log`, at full four-decimal precision.
+- **The newest confirmed price becomes the baseline.** Otherwise the same change
+  would resurface on every future invoice, since `products.ek_price` never
+  moves. A row compared against a previous confirmation says so.
 - Linking an article asks for *Einheiten pro Rechnungseinheit* — the
   `unit_factor`. 12 when the invoice bills a Karton and you stock the Stück.
 
@@ -163,7 +169,8 @@ between "Butter Bohnen" and "Monte Castello". Every mapping bug in the manual
 process came from names.
 
 **Never auto-apply.** The model transcribes, arithmetic verifies, you decide.
-Same boundary as the trading rule.
+Same boundary as the trading rule — and here the boundary is structural, not
+just a habit: there is no code path that writes to der Stern at all.
 
 ---
 
@@ -175,5 +182,9 @@ Same boundary as the trading rule.
 - Weighed goods drift by design — invoices bill 2,545 kg where a list says
   3 kg. That is a stock-count question, not a price question, and this tool
   reports it without trying to resolve it.
-- If your article table stores 2 decimals, three-decimal supplier prices such
-  as 0,625 will round. Small, but systematic on high-volume articles.
+- Prices are kept here at four decimals, so nothing is lost in this app. der
+  Stern's own `ek_price` column holds two — if you transcribe a price across by
+  hand, 0,625 becomes 0,63 there. Small, but systematic on high-volume articles.
+- Because nothing is written back, der Stern's EK prices do not change. This
+  tool tells you what the invoice says; updating the shop stays a separate,
+  deliberate act.

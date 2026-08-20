@@ -10,6 +10,10 @@
 --
 --   2. `article_id` is TEXT, not uuid, because der Stern's articles are keyed
 --      by `public.products.artikel_nr TEXT PRIMARY KEY` — there is no uuid id.
+--      It is a plain column with NO foreign key: this app is deliberately
+--      decoupled from der Stern. It reads public.products to match articles and
+--      never writes to it, so nothing here can lock, cascade into, or otherwise
+--      disturb the live shop.
 --
 -- After running this, add `rechnungsabgleich` under
 -- Settings -> API -> Exposed schemas, or every query returns 404.
@@ -90,11 +94,10 @@ create table if not exists rechnungsabgleich.article_mappings (
   id               uuid primary key default gen_random_uuid(),
   supplier_id      uuid not null references rechnungsabgleich.suppliers(id),
   supplier_art_nr  text not null,
-  -- der Stern's articles are keyed by artikel_nr (TEXT), not a uuid.
-  article_id       text not null
-                     references public.products(artikel_nr)
-                     on update cascade
-                     on delete cascade,
+  -- der Stern's public.products.artikel_nr. Intentionally NOT a foreign key —
+  -- see the header. A deleted article leaves a stale mapping here, which is
+  -- harmless: the review screen simply shows it as unmapped again.
+  article_id       text not null,
   -- how many of YOUR units one invoice unit contains.
   -- 1 for a straight match. 12 when the invoice bills a Karton
   -- and you stock the single Stueck.
@@ -105,7 +108,16 @@ create table if not exists rechnungsabgleich.article_mappings (
 );
 
 -- ---------------------------------------------------------------
--- Audit: every price change ever applied
+-- Approved prices.
+--
+-- This app never writes to der Stern, so this table is not a log of changes
+-- made elsewhere — it IS the record. Approving a price here means "I have seen
+-- this and accept it"; the newest row per article becomes the baseline the next
+-- invoice is compared against, so an accepted price stops resurfacing.
+--
+-- new_price keeps four decimals. der Stern's own ek_price column holds two, so
+-- transcribing a price across by hand will round it — that rounding happens
+-- there, not here.
 -- ---------------------------------------------------------------
 create table if not exists rechnungsabgleich.price_change_log (
   id            uuid primary key default gen_random_uuid(),
@@ -116,6 +128,9 @@ create table if not exists rechnungsabgleich.price_change_log (
   applied_by    uuid,
   applied_at    timestamptz not null default now()
 );
+
+create index if not exists price_change_log_article_idx
+  on rechnungsabgleich.price_change_log (article_id, applied_at desc);
 
 -- ---------------------------------------------------------------
 -- RLS. der Stern's own tables are readable by any authenticated user,
