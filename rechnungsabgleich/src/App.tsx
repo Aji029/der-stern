@@ -3,6 +3,7 @@ import { LogOut, ReceiptText } from 'lucide-react';
 import { AuthProvider, ProtectedRoute, useAuth } from './lib/auth';
 import LoginPage from './pages/LoginPage';
 import InvoicesPage from './pages/InvoicesPage';
+import TodayPage from './pages/TodayPage';
 import InvoiceReview from './InvoiceReview';
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,16 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <Shell>
+                  <TodayPage />
+                </Shell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/invoices"
             element={
               <ProtectedRoute>
                 <Shell>

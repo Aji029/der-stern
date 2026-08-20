@@ -6,6 +6,8 @@ export interface Supplier {
   id: string;
   name: string;
   layout_key: string;
+  /** The matching public.suppliers row in der Stern, once linked. */
+  stern_supplier_id?: string | null;
 }
 
 export type InvoiceStatus =

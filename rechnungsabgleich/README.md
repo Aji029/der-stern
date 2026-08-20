@@ -2,6 +2,12 @@
 
 Photograph the invoice, get a list of what changed, tap approve.
 
+The daily loop: open **Heute**, see what der Stern says each supplier is
+delivering today, tap the camera on that supplier, photograph the invoice. The
+app reads it twice, checks the arithmetic against the invoice's own printed
+totals, and shows you the price changes — plus what was ordered and did not
+arrive, what arrived that was not ordered, and where quantities differ.
+
 The design principle throughout: **extraction is the model's job, verification is
 arithmetic's job, mapping decisions are yours.**
 
@@ -92,6 +98,14 @@ curl -X POST "$SUPABASE_URL/functions/v1/extract-invoice" \
 Success looks like `{"ok":true,"lines":103,"warenwert":1300.78}`.
 A rescan looks like `{"ok":false,"needs_rescan":true,"pages":[2],"messages":[…]}`.
 If `warenwert` does not match the paper, stop and fix before going further.
+
+## Step 3b — Link each supplier once
+
+The **Heute** screen reads der Stern's open orders for the day and groups them
+by the supplier the article belongs to. To photograph a supplier's invoice, that
+der Stern supplier has to be matched once to one of this app's suppliers,
+because the extraction prompt depends on the invoice layout. The screen offers
+the choice inline; it is remembered in `suppliers.stern_supplier_id`.
 
 ## Step 4 — Review screen
 

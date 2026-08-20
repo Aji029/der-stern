@@ -28,6 +28,7 @@ import {
   type StoredArticle,
 } from '../shared/verifier';
 import { euro, price, quantity } from './lib/format';
+import { loadTodaysPick, type PickItem } from './lib/todaysPick';
 import ArticlePicker from './components/ArticlePicker';
 import type { Article, Invoice, StoredVerifyReport } from './types';
 
@@ -42,6 +43,8 @@ export default function InvoiceReview() {
   const [articles, setArticles] = useState<StoredArticle[]>([]);
   // article_ids whose baseline is a previous approval here rather than der Stern
   const [fromApproval, setFromApproval] = useState<Set<string>>(new Set());
+  // What der Stern expected from this supplier on this invoice's day
+  const [ordered, setOrdered] = useState<PickItem[] | null>(null);
   const [accepted, setAccepted] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +56,7 @@ export default function InvoiceReview() {
 
     const { data: inv, error: invErr } = await supabase
       .from('supplier_invoices')
-      .select('*, suppliers ( id, name, layout_key )')
+      .select('*, suppliers ( id, name, layout_key, stern_supplier_id )')
       .eq('id', invoiceId)
       .single();
 
@@ -115,6 +118,21 @@ export default function InvoiceReview() {
       setFromApproval(new Set());
     }
 
+    // What der Stern expected from this supplier that day. Only possible once
+    // the supplier has been matched to its der Stern counterpart.
+    const sternId = inv.suppliers?.stern_supplier_id;
+    if (sternId) {
+      const day = (inv.invoice_date ?? inv.created_at ?? '').slice(0, 10);
+      try {
+        const groups = await loadTodaysPick(day);
+        setOrdered(groups.find(g => g.stern_supplier_id === sternId)?.items ?? []);
+      } catch {
+        setOrdered(null); // a failed read must not block the price review
+      }
+    } else {
+      setOrdered(null);
+    }
+
     setLoading(false);
   }, [invoiceId]);
 
@@ -137,9 +155,40 @@ export default function InvoiceReview() {
   );
   const unchanged = diff.filter(d => d.kind === 'unchanged');
 
-  // articles you stock from this supplier that this invoice did not deliver
-  const deliveredArtNrs = new Set(lines.map(l => l.supplier_art_nr));
-  const notDelivered = mappings.filter(m => !deliveredArtNrs.has(m.supplier_art_nr));
+  /**
+   * Ordered vs delivered.
+   *
+   * Invoice quantities are in the supplier's units; unit_factor converts them
+   * into der Stern's units, the same conversion diffPrices uses for the price.
+   */
+  const deliveryCheck = useMemo(() => {
+    if (ordered === null) return null;
+
+    const byArt = new Map(mappings.map(m => [m.supplier_art_nr, m]));
+    const delivered = new Map<string, number>();
+
+    for (const l of lines) {
+      if (l.is_leergut) continue;
+      const m = l.supplier_art_nr ? byArt.get(l.supplier_art_nr) : undefined;
+      if (!m) continue;
+      const menge = (l.effective_menge ?? 0) * Number(m.unit_factor || 1);
+      delivered.set(m.article_id, (delivered.get(m.article_id) ?? 0) + menge);
+    }
+
+    const missing: Array<PickItem & { delivered: number }> = [];
+    const short: Array<PickItem & { delivered: number }> = [];
+
+    for (const item of ordered) {
+      const got = delivered.get(item.artikel_nr) ?? 0;
+      if (got === 0) missing.push({ ...item, delivered: 0 });
+      else if (Math.abs(got - item.quantity) > 0.001) short.push({ ...item, delivered: got });
+    }
+
+    const orderedIds = new Set(ordered.map(i => i.artikel_nr));
+    const unexpected = [...delivered.keys()].filter(id => !orderedIds.has(id));
+
+    return { missing, short, unexpected };
+  }, [ordered, mappings, lines]);
 
   /**
    * Record the accepted prices. Nothing is written to der Stern — this only
@@ -372,19 +421,53 @@ export default function InvoiceReview() {
         </section>
       )}
 
-      {/* ---- expected but not billed ---- */}
-      {notDelivered.length > 0 && (
-        <section className="space-y-1">
+      {/* ---- ordered vs delivered, against der Stern's own order list ---- */}
+      {deliveryCheck && (deliveryCheck.missing.length > 0 || deliveryCheck.short.length > 0 || deliveryCheck.unexpected.length > 0) && (
+        <section className="space-y-3">
           <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Auf Ihrer Liste, nicht auf dieser Rechnung
+            Bestellt gegen geliefert
           </h3>
-          <ul className="text-sm text-gray-700 list-disc pl-5">
-            {notDelivered.map(m => (
-              <li key={m.supplier_art_nr}>
-                {articles.find(a => a.article_id === m.article_id)?.name ?? m.supplier_art_nr}
-              </li>
-            ))}
-          </ul>
+
+          {deliveryCheck.missing.length > 0 && (
+            <div className="text-sm">
+              <p className="text-gray-700 mb-1">Bestellt, aber nicht auf dieser Rechnung:</p>
+              <ul className="list-disc pl-5 text-gray-700">
+                {deliveryCheck.missing.map(i => (
+                  <li key={i.artikel_nr}>
+                    {i.name} — {quantity(i.quantity)}× erwartet
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {deliveryCheck.short.length > 0 && (
+            <div className="text-sm">
+              <p className="text-gray-700 mb-1">Menge weicht ab:</p>
+              <ul className="list-disc pl-5 text-gray-700">
+                {deliveryCheck.short.map(i => (
+                  <li key={i.artikel_nr}>
+                    {i.name} — {quantity(i.quantity)}× bestellt, {quantity(i.delivered)}× geliefert
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {deliveryCheck.unexpected.length > 0 && (
+            <div className="text-sm">
+              <p className="text-gray-700 mb-1">Geliefert, aber heute nicht bestellt:</p>
+              <ul className="list-disc pl-5 text-gray-700">
+                {deliveryCheck.unexpected.map(id => (
+                  <li key={id}>{articles.find(a => a.article_id === id)?.name ?? id}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">
+            Gewogene Ware weicht bauartbedingt ab — das ist eine Bestandsfrage, keine Preisfrage.
+          </p>
         </section>
       )}
 
