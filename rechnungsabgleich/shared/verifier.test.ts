@@ -1,376 +1,233 @@
 /**
- * Verifier tests — run with `npm test` (npx tsx shared/verifier.test.ts).
+ * Ground truth: Hamberger Rechnung 26-008-6253214, 18.08.2026.
+ * These numbers were reconciled by hand -- Bon subtotals and the
+ * Warenwert of 1300,78 all matched. If the verifier ever stops
+ * agreeing with them, the verifier is wrong, not the invoice.
  *
- * No test framework: this file is meant to be runnable before the app has any
- * dependencies installed beyond tsx, because the verifier has to be trustworthy
- * before a single line is sent to an API.
- *
- * The fixture is Bon 43413 from Rechnung 26-008-6253214 (Hamberger Großmarkt),
- * which reconciles to 142,46. The four lines called out below are the shapes that
- * actually bite in production; the rest of the Bon fills it out to the printed
- * total. Replacing any line with the real scan is a drop-in — the assertions read
- * the totals from the fixture rather than hard-coding them, except for 142,46
- * itself, which is the number printed on the paper.
+ *   npx tsx shared/verifier.test.ts
  */
 
 import {
-  roundHalfUp,
-  computeLineAmount,
-  verifyLine,
-  computeWarenwert,
+  round2,
+  verifyLines,
+  verifyBons,
   verifyInvoice,
-  comparePasses,
-  type InvoiceExtraction,
-  type InvoiceLine,
-} from './verifier';
-
-// ---------------------------------------------------------------------------
-// Fixture: Bon 43413, Rechnung 26-008-6253214
-// ---------------------------------------------------------------------------
-
-const BON_43413_LINES: InvoiceLine[] = [
-  // 13 x 0,625 = 8,125 -> 8,13. Three-decimal price, rounded half up.
-  { page: 1, bon_nr: '43413', pos: 1, supplier_article_nr: '225407',
-    description: 'Butter Bohnen 1/1', a_kolli: 13, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 0.625, betrag: 8.13 },
-
-  // 3 KTK x 6 DS x 2,890 = 52,02. Karton times inner count.
-  { page: 1, bon_nr: '43413', pos: 2, supplier_article_nr: '118902',
-    description: 'Cola 0,33 Dose', a_kolli: 3, inh_kolli: 6, einheit: 'KTK',
-    menge: null, preis: 2.890, betrag: 52.02 },
-
-  // 1 x 2,035 kg x 3,490 = 7,10215 -> 7,10. Weighed goods.
-  { page: 1, bon_nr: '43413', pos: 3, supplier_article_nr: '340117',
-    description: 'Rinderhack frisch', a_kolli: 1, inh_kolli: null, einheit: 'KG',
-    menge: 2.035, preis: 3.490, betrag: 7.10 },
-
-  // 12- x 0,680 = 8,16-. Storno / credit line.
-  { page: 1, bon_nr: '43413', pos: 4, supplier_article_nr: '771203',
-    description: 'Joghurt Natur 500g', a_kolli: -12, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 0.680, betrag: -8.16 },
-
-  { page: 1, bon_nr: '43413', pos: 5, supplier_article_nr: '509614',
-    description: 'Speiseoel 10L Kanister', a_kolli: 6, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 4.990, betrag: 29.94 },
-
-  { page: 1, bon_nr: '43413', pos: 6, supplier_article_nr: '662108',
-    description: 'Mineralwasser Classic', a_kolli: 2, inh_kolli: 12, einheit: 'KTK',
-    menge: null, preis: 1.150, betrag: 27.60 },
-
-  { page: 1, bon_nr: '43413', pos: 7, supplier_article_nr: '340982',
-    description: 'Gouda am Stueck', a_kolli: 1, inh_kolli: null, einheit: 'KG',
-    menge: 3.745, preis: 5.900, betrag: 22.10 },
-
-  // 5 x 0,745 = 3,725 -> 3,73. Second half-up case, different digit.
-  { page: 1, bon_nr: '43413', pos: 8, supplier_article_nr: '883014',
-    description: 'Baguette vorgebacken', a_kolli: 5, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 0.745, betrag: 3.73 },
-
-  // Pfand: verified like any other line, but never part of the Warenwert.
-  { page: 1, bon_nr: '43413', pos: 9, supplier_article_nr: '900001',
-    description: 'Leergut Kasten Pfand', a_kolli: 2, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 1.500, betrag: 3.00, is_pfand: true },
-];
-
-const BON_43413: InvoiceExtraction = {
-  invoice_no: '26-008-6253214',
-  invoice_date: '2026-08-11',
-  bon_totals: [{ bon_nr: '43413', subtotal: 142.46 }],
-  warenwert: 142.46,
-  lines: BON_43413_LINES,
-};
-
-/** A second Bon on page 2, so page-level rescan targeting can be tested. */
-const PAGE_2_LINES: InvoiceLine[] = [
-  { page: 2, bon_nr: '43414', pos: 1, supplier_article_nr: '441002',
-    description: 'Tomaten Rispe', a_kolli: 10, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 1.200, betrag: 12.00 },
-  { page: 2, bon_nr: '43414', pos: 2, supplier_article_nr: '441119',
-    description: 'Paprika rot', a_kolli: 4, inh_kolli: null, einheit: 'ST',
-    menge: null, preis: 2.500, betrag: 10.00 },
-];
-
-const TWO_PAGE_INVOICE: InvoiceExtraction = {
-  ...BON_43413,
-  bon_totals: [
-    { bon_nr: '43413', subtotal: 142.46 },
-    { bon_nr: '43414', subtotal: 22.00 },
-  ],
-  warenwert: 164.46,
-  lines: [...BON_43413_LINES, ...PAGE_2_LINES],
-};
-
-const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-/** Copy the fixture with one line's field changed — a mis-read digit. */
-function corrupt(
-  source: InvoiceExtraction,
-  match: (line: InvoiceLine) => boolean,
-  patch: Partial<InvoiceLine>
-): InvoiceExtraction {
-  const copy = clone(source);
-  const line = copy.lines.find(match);
-  if (!line) throw new Error('fixture line not found — the test itself is wrong');
-  Object.assign(line, patch);
-  return copy;
-}
-
-const lineOf = (pos: number): InvoiceLine =>
-  clone(BON_43413_LINES.find(l => l.pos === pos)!);
-
-// ---------------------------------------------------------------------------
-// Minimal harness
-// ---------------------------------------------------------------------------
+  compareExtractions,
+  diffPrices,
+  type RawLine,
+} from './verifier.ts';
 
 let passed = 0;
-const failures: string[] = [];
+let failed = 0;
 
-function test(name: string, fn: () => void): void {
-  try {
-    fn();
+function check(name: string, cond: boolean, detail = '') {
+  if (cond) {
     passed++;
-  } catch (error) {
-    failures.push(`${name}\n    ${(error as Error).message}`);
+    console.log(`  ok   ${name}`);
+  } else {
+    failed++;
+    console.log(`  FAIL ${name} ${detail}`);
   }
 }
 
-function assert(condition: boolean, message: string): void {
-  if (!condition) throw new Error(message);
+function line(p: Partial<RawLine> & Pick<RawLine, 'preis' | 'betrag'>): RawLine {
+  return {
+    page_no: 1,
+    line_no: 0,
+    description: 'x',
+    a_kolli: 1,
+    inh_kolli: 1,
+    ...p,
+  } as RawLine;
 }
 
-function assertEqual(actual: unknown, expected: unknown, message = ''): void {
-  const a = JSON.stringify(actual);
-  const e = JSON.stringify(expected);
-  if (a !== e) throw new Error(`${message}\n    expected ${e}\n    actual   ${a}`);
+console.log('\nround2');
+check('8.125 rounds up to 8.13', round2(8.125) === 8.13, `got ${round2(8.125)}`);
+check('8.015 rounds up to 8.02', round2(8.015) === 8.02, `got ${round2(8.015)}`);
+check('3.1773 -> 3.18', round2(3.1773) === 3.18);
+check('7.10215 -> 7.10', round2(7.10215) === 7.1);
+
+console.log('\nline arithmetic');
+{
+  // 13 PAA x 1 PA Ita-San Ramen @ 0,625 = 8,13
+  const r = verifyLines([
+    line({ a_kolli: 13, inh_kolli: 1, preis: 0.625, betrag: 8.13 }),
+  ]);
+  check('Ramen 13 x 0,625 = 8,13', r[0].math_ok);
+}
+{
+  // 3 KTK x 6 DS geschaelte Tomaten @ 2,890 = 52,02
+  const r = verifyLines([
+    line({ a_kolli: 3, inh_kolli: 6, preis: 2.89, betrag: 52.02 }),
+  ]);
+  check('Karton x inner: 18 x 2,89 = 52,02', r[0].math_ok);
+  check('effective menge is 18', r[0].effective_menge === 18);
+}
+{
+  // 1 KTK x 4 PG Passiertuch @ 28,700 = 114,80
+  const r = verifyLines([
+    line({ a_kolli: 1, inh_kolli: 4, preis: 28.7, betrag: 114.8 }),
+  ]);
+  check('Passiertuch 4 x 28,70 = 114,80', r[0].math_ok);
+}
+{
+  // weighed: 1 x 2,035 KG Pakchoi @ 3,490 = 7,10
+  const r = verifyLines([
+    line({ a_kolli: 1, inh_kolli: 2.035, preis: 3.49, betrag: 7.1 }),
+  ]);
+  check('Pakchoi 2,035 kg x 3,49 = 7,10', r[0].math_ok);
+}
+{
+  // the credit line: 12- SL Physalis @ 0,680 = 8,16-
+  const r = verifyLines([
+    line({ a_kolli: -12, inh_kolli: 1, preis: 0.68, betrag: -8.16 }),
+  ]);
+  check('negative credit line verifies', r[0].math_ok);
+}
+{
+  // a deliberately misread digit must be caught
+  const r = verifyLines([
+    line({ a_kolli: 3, inh_kolli: 1, preis: 24.5, betrag: 63.5 }),
+  ]);
+  check('wrong betrag is rejected', !r[0].math_ok);
 }
 
-// ---------------------------------------------------------------------------
-// Rounding — half up, away from zero, immune to binary float noise
-// ---------------------------------------------------------------------------
+console.log('\nBon 43413 (printed 142,46)');
+const bon43413: RawLine[] = [
+  ['KARTOFFEL UEG MEHLIGKOCHEND', 1, 1, 6.79, 6.79],
+  ['KARTOFFEL BACK & GRILL', 1, 1, 2.99, 2.99],
+  ['SPINAT-BLATT BEUTEL', 4, 1, 1.95, 7.8],
+  ['KAROTTEN SCHALE', 2, 1, 1.05, 2.1],
+  ['ANANAS EXTRA SWEET', 1, 1, 2.09, 2.09],
+  ['ZWIEBEL ROT 1KG NETZ', 1, 1, 1.02, 1.02],
+  ['ZWIEBELSCHOTEN BUND', 10, 1, 0.62, 6.2],
+  ['PAKCHOI SHANGHAI', 1, 2.035, 3.49, 7.1],
+  ['BLUMENKOHL STUECK', 12, 1, 1.99, 23.88],
+  ['FENCHEL', 1, 1.335, 2.38, 3.18],
+  ['JOHANNISBEEREN ROT SCHALE', 3, 1, 1.95, 5.85],
+  ['KNOBLAUCH 1KG NETZ/STRANG', 1, 1, 4.48, 4.48],
+  ['PHYSALIS SCHALE', 12, 1, 0.68, 8.16],
+  ['KNOBLAUCH FRISCH', 1, 0.505, 6.49, 3.28],
+  ['PEPERONI BRATPEPERONI GRUEN', 10, 1, 1.25, 12.5],
+  ['INGWER', 1, 3.5, 2.29, 8.02],
+  ['KNOBLAUCH GESCHAELT 1000G', 3, 1, 3.99, 11.97],
+  ['BEETE ROT GEGART', 8, 1, 1.28, 10.24],
+  ['PHYSALIS SCHALE (Storno)', -12, 1, 0.68, -8.16],
+  ['PHYSALIS SCHALE', 10, 1, 0.62, 6.2],
+  ['SPINAT 1 KG KISTE', 3, 1, 5.59, 16.77],
+].map(([description, a, i, preis, betrag], idx) =>
+  line({
+    line_no: idx,
+    bon: '43413',
+    description: description as string,
+    a_kolli: a as number,
+    inh_kolli: i as number,
+    preis: preis as number,
+    betrag: betrag as number,
+  }),
+);
 
-test('roundHalfUp: 8,125 rounds up to 8,13', () => {
-  assertEqual(roundHalfUp(8.125), 8.13);
+// Pfand sits in the line list but outside the Warenwert
+const pfand = line({
+  line_no: 99,
+  bon: '43413',
+  description: 'PFANDKISTEN-POOL GRUEN',
+  preis: 3.86,
+  betrag: 3.86,
+  is_leergut: true,
 });
 
-test('roundHalfUp: 2,675 is not dragged down by binary float noise', () => {
-  // 2.675 is stored as 2.674999…; a naive Math.round(x * 100) yields 2,67.
-  assertEqual(roundHalfUp(2.675), 2.68);
-});
+{
+  const lines = verifyLines([...bon43413, pfand]);
+  check('all 21 goods lines verify', lines.every((l) => l.math_ok));
 
-test('roundHalfUp: negative halves round away from zero, not toward +Infinity', () => {
-  // toFixed(2) on -8.125 gives "-8.12" — wrong for a Storno line.
-  assertEqual(roundHalfUp(-8.125), -8.13);
-});
-
-// ---------------------------------------------------------------------------
-// Line arithmetic — the four shapes suppliers actually print
-// ---------------------------------------------------------------------------
-
-test('line: 13 x 0,625 = 8,13 (three-decimal price)', () => {
-  const line = lineOf(1);
-  assertEqual(computeLineAmount(line), 8.13);
-  assertEqual(verifyLine(line, 0), null, 'line should reconcile');
-});
-
-test('line: 3 KTK x 6 DS x 2,890 = 52,02 (Karton times inner count)', () => {
-  const line = lineOf(2);
-  assertEqual(computeLineAmount(line), 52.02);
-  assertEqual(verifyLine(line, 0), null, 'line should reconcile');
-});
-
-test('line: 1 x 2,035 kg x 3,490 = 7,10 (weighed goods)', () => {
-  const line = lineOf(3);
-  assertEqual(computeLineAmount(line), 7.10);
-  assertEqual(verifyLine(line, 0), null, 'line should reconcile');
-});
-
-test('line: 12- x 0,680 = 8,16- (Storno)', () => {
-  const line = lineOf(4);
-  assertEqual(computeLineAmount(line), -8.16);
-  assertEqual(verifyLine(line, 0), null, 'Storno line should reconcile');
-});
-
-test('line: a missing inh_kolli counts as 1, not as 0', () => {
-  const line = { ...lineOf(1), inh_kolli: undefined };
-  assertEqual(computeLineAmount(line), 8.13);
-});
-
-test('line: a one-cent error is caught', () => {
-  const line = { ...lineOf(2), betrag: 52.03 };
-  const issue = verifyLine(line, 0);
-  assert(issue !== null, 'a one-cent difference must not pass');
-  assertEqual(issue!.code, 'line_mismatch');
-  assertEqual(issue!.expected, 52.02);
-  assertEqual(issue!.delta, 0.01);
-});
-
-test('line: a corrupted digit is caught (52,02 read as 62,02)', () => {
-  const line = { ...lineOf(2), betrag: 62.02 };
-  const issue = verifyLine(line, 0);
-  assert(issue !== null, 'a corrupted digit must not pass');
-  assertEqual(issue!.code, 'line_mismatch');
-  assertEqual(issue!.delta, 10.0);
-});
-
-// ---------------------------------------------------------------------------
-// Unverifiable lines — flagged, never guessed
-// ---------------------------------------------------------------------------
-
-test('unverifiable: a missing preis is flagged and never back-computed', () => {
-  const line = { ...lineOf(1), preis: null };
-  assertEqual(computeLineAmount(line), null, 'must not derive preis from betrag');
-  const issue = verifyLine(line, 0);
-  assert(issue !== null, 'a line with no price cannot be called verified');
-  assertEqual(issue!.code, 'missing_preis');
-  assertEqual(issue!.expected, null);
-});
-
-test('unverifiable: a missing quantity is flagged', () => {
-  const line = { ...lineOf(1), a_kolli: null };
-  const issue = verifyLine(line, 0);
-  assert(issue !== null, 'a line with no quantity cannot be checked');
-  assertEqual(issue!.code, 'missing_quantity');
-});
-
-test('unverifiable: a missing betrag is flagged', () => {
-  const line = { ...lineOf(1), betrag: null };
-  const issue = verifyLine(line, 0);
-  assert(issue !== null, 'a line with no amount cannot be checked');
-  assertEqual(issue!.code, 'missing_betrag');
-});
-
-// ---------------------------------------------------------------------------
-// Pfand
-// ---------------------------------------------------------------------------
-
-test('Pfand: deposit lines are excluded from the Warenwert', () => {
-  const withoutPfand = BON_43413_LINES.filter(l => !l.is_pfand);
-  assertEqual(computeWarenwert(BON_43413_LINES), computeWarenwert(withoutPfand));
-  assertEqual(computeWarenwert(BON_43413_LINES), 142.46);
-});
-
-test('Pfand: deposit lines are still checked arithmetically', () => {
-  const good = BON_43413_LINES.find(l => l.is_pfand)!;
-  assertEqual(verifyLine(good, 0), null, 'a correct Pfand line reconciles');
-
-  const bad = { ...clone(good), betrag: 4.0 };
-  const issue = verifyLine(bad, 0);
-  assert(issue !== null, 'a wrong Pfand line must still be caught');
-  assertEqual(issue!.code, 'line_mismatch');
-});
-
-// ---------------------------------------------------------------------------
-// Bon subtotals
-// ---------------------------------------------------------------------------
-
-test('Bon: the printed subtotal for 43413 matches the lines', () => {
-  const report = verifyInvoice(BON_43413);
-  assertEqual(report.bons.length, 1);
-  assertEqual(report.bons[0].bon_nr, '43413');
-  assertEqual(report.bons[0].computed, 142.46);
-  assert(report.bons[0].ok, 'Bon 43413 must reconcile');
-});
-
-test('Bon: a wrong subtotal fails and names the Bon', () => {
-  const misread = clone(BON_43413);
-  misread.bon_totals = [{ bon_nr: '43413', subtotal: 142.96 }];
-  const report = verifyInvoice(misread);
-  assert(!report.ok, 'a wrong Bon subtotal must fail the report');
-  assertEqual(report.bons[0].bon_nr, '43413');
-  assertEqual(report.bons[0].delta, 0.5);
-  assertEqual(report.rescanPages, [1]);
-});
-
-test('Bon: a Bon with no printed subtotal is not invented', () => {
-  const noTotals = clone(BON_43413);
-  delete noTotals.bon_totals;
-  const report = verifyInvoice(noTotals);
-  assertEqual(report.bons, [], 'nothing to check means no check, not a pass');
-  assert(report.ok, 'the invoice still reconciles on its Warenwert');
-});
-
-// ---------------------------------------------------------------------------
-// Whole invoice
-// ---------------------------------------------------------------------------
-
-test('invoice: Bon 43413 reconciles to 142,46 exactly', () => {
-  const report = verifyInvoice(BON_43413);
-  assertEqual(report.warenwert.computed, 142.46);
-  assertEqual(report.warenwert.printed, 142.46);
-  assertEqual(report.warenwert.delta, 0);
-  assert(report.ok, `report should be ok, got: ${report.summary}`);
-});
-
-test('invoice: a clean invoice asks for no rescans', () => {
-  const report = verifyInvoice(BON_43413);
-  assertEqual(report.rescanPages, []);
-  assertEqual(report.lineIssues, []);
-  assertEqual(report.unverifiableCount, 0);
-});
-
-test('invoice: a single corrupted digit fails the whole report', () => {
-  // 52,02 read as 62,02 — the line breaks, and so does everything above it.
-  const misread = corrupt(BON_43413, l => l.pos === 2, { betrag: 62.02 });
-  const report = verifyInvoice(misread);
-  assert(!report.ok, 'one bad digit must fail the report');
-  assertEqual(report.lineIssues.length, 1);
-  assertEqual(report.lineIssues[0].supplier_article_nr, '118902');
-  assert(!report.warenwert.ok, 'the Warenwert must no longer reconcile');
-  assert(!report.bons[0].ok, 'the Bon subtotal must no longer reconcile');
-});
-
-test('invoice: the rescan list names only the page that failed', () => {
-  const misread = corrupt(TWO_PAGE_INVOICE, l => l.page === 2 && l.pos === 1, { betrag: 13.0 });
-  const report = verifyInvoice(misread);
-  assert(!report.ok, 'a corrupted page-2 line must fail the report');
-  assertEqual(report.rescanPages, [2], 'page 1 was read cleanly and need not be re-shot');
-});
-
-test('invoice: no printed Warenwert means nothing anchors the reading', () => {
-  const anchorless = clone(BON_43413);
-  anchorless.warenwert = null;
-  const report = verifyInvoice(anchorless);
-  assert(!report.ok, 'without the printed total the extraction proves nothing');
-  assertEqual(report.warenwert.delta, null);
-  assertEqual(report.rescanPages, [1]);
-});
-
-// ---------------------------------------------------------------------------
-// Two-pass comparison
-// ---------------------------------------------------------------------------
-
-test('passes: two identical readings produce no conflict', () => {
-  assertEqual(comparePasses(BON_43413, clone(BON_43413)), []);
-});
-
-test('passes: a digit read two ways is a conflict on that field', () => {
-  // The fold runs through the price on Pos 2: 2,890 reads as 2,390 second time.
-  const passB = corrupt(BON_43413, l => l.pos === 2, { preis: 2.39 });
-  const conflicts = comparePasses(BON_43413, passB);
-  assertEqual(conflicts.length, 1);
-  assertEqual(conflicts[0].field, 'preis');
-  assertEqual(conflicts[0].key, 'Bon 43413 Pos 2');
-  assertEqual(conflicts[0].page, 1);
-
-  // And a conflict alone is enough to hold the invoice back.
-  const report = verifyInvoice(BON_43413, conflicts);
-  assert(!report.ok, 'a disagreement between passes must block the review screen');
-  assertEqual(report.rescanPages, [1]);
-});
-
-test('passes: a line one pass missed entirely is a conflict', () => {
-  const passB = clone(BON_43413);
-  passB.lines = passB.lines.filter(l => l.pos !== 7);
-  const conflicts = comparePasses(BON_43413, passB);
-  assert(conflicts.some(c => c.field === 'count'), 'the line count difference must be reported');
-  assert(
-    conflicts.some(c => c.key === 'Bon 43413 Pos 7' && c.scope === 'structure'),
-    'the missing line must be named'
+  const bons = verifyBons(lines, [{ bon: '43413', betrag: 142.46 }]);
+  check(
+    'Bon 43413 sums to 142,46',
+    bons[0].ok,
+    `computed ${bons[0].computed}`,
   );
-});
+  check('Pfand excluded from the Bon sum', bons[0].computed === 142.46);
+}
 
-// ---------------------------------------------------------------------------
+console.log('\nfull invoice report');
+{
+  const report = verifyInvoice(
+    [...bon43413, pfand],
+    [{ bon: '43413', betrag: 142.46 }],
+    { warenwert: 142.46, leergut: 3.86 },
+  );
+  check('report ok', report.ok, report.messages.join(' | '));
 
-for (const failure of failures) console.error(`FAIL  ${failure}`);
-console.log(`\n${passed} passed, ${failures.length} failed`);
-if (failures.length > 0) process.exit(1);
+  // now corrupt one digit, as a bad photo would
+  const corrupted = [...bon43413];
+  corrupted[16] = { ...corrupted[16], betrag: 11.07 }; // 11,97 misread
+  const bad = verifyInvoice(
+    [...corrupted, pfand],
+    [{ bon: '43413', betrag: 142.46 }],
+    { warenwert: 142.46 },
+  );
+  check('a single misread digit fails the report', !bad.ok);
+  check('the failing line is named', bad.failed_lines.length === 1);
+  check('the Bon check also fails', bad.bon_checks.some((b) => !b.ok));
+}
+
+console.log('\nmissing totals page');
+{
+  const report = verifyInvoice(bon43413, [], {});
+  check('unverifiable without a Warenwert', !report.ok);
+  check(
+    'and says so',
+    report.messages.some((m) => m.includes('cannot be fully verified')),
+  );
+}
+
+console.log('\ndouble-extraction consensus');
+{
+  const a = bon43413.slice(0, 5);
+  const b = bon43413.slice(0, 5).map((l, i) =>
+    i === 2 ? { ...l, preis: 1.85 } : l, // second pass reads 1,95 as 1,85
+  );
+  const c = compareExtractions(a, b);
+  check('disagreement detected', !c.agree);
+  check('conflict names the field', c.conflicts[0].field === 'preis');
+  check('identical passes agree', compareExtractions(a, a).agree);
+}
+
+console.log('\nprice diff');
+{
+  const lines = verifyLines([
+    line({ supplier_art_nr: '287739', preis: 11.99, betrag: 11.99 }),
+    line({ supplier_art_nr: '112000', preis: 1.89, betrag: 1.89 }),
+    line({ supplier_art_nr: '999999', preis: 4.5, betrag: 4.5,
+           description: 'BRAND NEW ARTICLE' }),
+  ]);
+  const diff = diffPrices(
+    lines,
+    [
+      { supplier_art_nr: '287739', article_id: 'a1', unit_factor: 12 },
+      { supplier_art_nr: '112000', article_id: 'a2', unit_factor: 1 },
+    ],
+    [
+      { article_id: 'a1', name: 'Gurken pro Stueck', ek_price: 1.06 },
+      { article_id: 'a2', name: 'Oro di Parma Tomatenmark', ek_price: 1.89 },
+    ],
+  );
+  const gurke = diff.find((d) => d.art_nr === '287739');
+  check(
+    'unit_factor 12 turns 11,99 Karton into 0,9992 per Stueck',
+    gurke?.kind === 'price_change' && gurke.new_price === 0.9992,
+    JSON.stringify(gurke),
+  );
+  check(
+    'unchanged price is not flagged',
+    diff.find((d) => d.art_nr === '112000')?.kind === 'unchanged',
+  );
+  check(
+    'unknown Art.Nr surfaces for mapping',
+    diff.find((d) => d.art_nr === '999999')?.kind === 'unmapped',
+  );
+}
+
+console.log(`\n${passed} passed, ${failed} failed\n`);
+if (failed > 0) process.exit(1);

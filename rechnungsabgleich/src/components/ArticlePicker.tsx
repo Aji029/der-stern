@@ -19,13 +19,16 @@ export default function ArticlePicker({
 }: {
   supplierArticleNr: string;
   description: string;
-  onPick: (article: Article) => void;
+  onPick: (article: Article, unitFactor: number) => void;
   onClose: () => void;
 }) {
   // The supplier's own article number is the best first guess: many suppliers
   // print the number der Stern already stores as bestellnummer.
   const [query, setQuery] = useState(supplierArticleNr);
   const [results, setResults] = useState<Article[]>([]);
+  // How many of YOUR units one invoice unit contains: 1 for a straight match,
+  // 12 when the invoice bills a Karton and you stock the single Stück.
+  const [unitFactor, setUnitFactor] = useState('1');
   const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +92,16 @@ export default function ArticlePicker({
               className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+            Einheiten pro Rechnungseinheit
+            <input
+              value={unitFactor}
+              onChange={e => setUnitFactor(e.target.value)}
+              inputMode="decimal"
+              className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+            />
+            <span className="text-gray-400">z.&nbsp;B. 12 bei einem Karton à 12 Stück</span>
+          </label>
         </div>
 
         <ul className="max-h-80 overflow-y-auto divide-y divide-gray-100">
@@ -101,7 +114,7 @@ export default function ArticlePicker({
           {results.map(article => (
             <li key={article.artikel_nr}>
               <button
-                onClick={() => onPick(article)}
+                onClick={() => onPick(article, Number(unitFactor.replace(',', '.')) || 1)}
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3"
               >
                 <span className="tabular text-sm text-gray-500 w-20 shrink-0">{article.artikel_nr}</span>

@@ -9,10 +9,17 @@ const STATUS: Record<InvoiceStatus, { label: string; className: string; icon: ty
   uploaded:     { label: 'Hochgeladen',   className: 'bg-gray-100 text-gray-700',      icon: Clock },
   extracting:   { label: 'Wird gelesen',  className: 'bg-blue-50 text-blue-700',       icon: Loader2 },
   needs_rescan: { label: 'Neu scannen',   className: 'bg-amber-50 text-amber-800',     icon: AlertTriangle },
-  review:       { label: 'Zur Prüfung',   className: 'bg-brand-100 text-brand-800',    icon: CheckCircle2 },
+  verified:     { label: 'Zur Prüfung',   className: 'bg-brand-100 text-brand-800',    icon: CheckCircle2 },
   applied:      { label: 'Übernommen',    className: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 },
   failed:       { label: 'Fehler',        className: 'bg-red-50 text-red-700',         icon: XCircle },
 };
+
+/** Pages the verifier flagged, read back out of the stored report. */
+function rescanPages(invoice: Invoice): number[] {
+  const report = invoice.verify_report?.report;
+  if (!report) return [];
+  return [...new Set(report.failed_lines.map(l => l.page_no))].sort((a, b) => a - b);
+}
 
 function StatusBadge({ status }: { status: InvoiceStatus }) {
   const { label, className, icon: Icon } = STATUS[status];
@@ -37,7 +44,7 @@ export default function InvoicesPage() {
 
   const loadInvoices = useCallback(async () => {
     const { data, error: loadError } = await supabase
-      .from('invoices')
+      .from('supplier_invoices')
       .select('*, suppliers ( id, name, layout_key )')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -76,15 +83,15 @@ export default function InvoicesPage() {
         const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
         const path = `${folder}/page-${i + 1}.${extension}`;
         const { error: uploadError } = await supabase.storage
-          .from('invoices')
+          .from('supplier_invoices')
           .upload(path, file, { contentType: file.type, upsert: false });
         if (uploadError) throw uploadError;
         paths.push(path);
       }
 
       const { data: invoice, error: insertError } = await supabase
-        .from('invoices')
-        .insert({ supplier_id: supplierId, storage_paths: paths })
+        .from('supplier_invoices')
+        .insert({ supplier_id: supplierId, page_paths: paths })
         .select('id')
         .single();
       if (insertError) throw insertError;
@@ -100,9 +107,10 @@ export default function InvoicesPage() {
       }
 
       setError(
-        result.status === 'needs_rescan'
-          ? `${result.summary} Bitte ${
-              result.rescan_pages?.length ? `Seite ${result.rescan_pages.join(', ')}` : 'die Rechnung'
+        result.needs_rescan
+          ? `${result.messages?.[0] ?? 'Die Rechnung stimmt nicht mit ihren gedruckten Summen überein.'} ` +
+            `Bitte ${
+              result.pages?.length ? `Seite ${result.pages.join(', ')}` : 'die Rechnung'
             } neu fotografieren.`
           : result.error ?? 'Die Rechnung konnte nicht gelesen werden.'
       );
@@ -122,7 +130,7 @@ export default function InvoicesPage() {
     try {
       const result = await extractInvoice(invoiceId);
       if (result.ok) navigate(`/invoices/${invoiceId}`);
-      else setError(result.summary ?? result.error ?? 'Erneut fehlgeschlagen.');
+      else setError(result.messages?.[0] ?? result.error ?? 'Erneut fehlgeschlagen.');
     } finally {
       setBusy(null);
       await loadInvoices();
@@ -202,18 +210,17 @@ export default function InvoicesPage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5 truncate">
                     {invoice.suppliers?.name ?? '—'} · {date(invoice.invoice_date) } · hochgeladen {dateTime(invoice.created_at)}
-                    {invoice.status === 'needs_rescan' && invoice.rescan_pages.length > 0 && (
-                      <> · Seite {invoice.rescan_pages.join(', ')} neu scannen</>
+                    {invoice.status === 'needs_rescan' && rescanPages(invoice).length > 0 && (
+                      <> · Seite {rescanPages(invoice).join(', ')} neu scannen</>
                     )}
-                    {invoice.extraction_error && <> · {invoice.extraction_error}</>}
                   </p>
                 </div>
 
                 <span className="tabular text-sm text-gray-700 hidden sm:block">
-                  {euro(invoice.warenwert_computed)} €
+                  {euro(invoice.printed_warenwert)} €
                 </span>
 
-                {invoice.status === 'review' || invoice.status === 'applied' ? (
+                {invoice.status === 'verified' || invoice.status === 'applied' ? (
                   <Link
                     to={`/invoices/${invoice.id}`}
                     className="text-sm font-medium text-brand-700 hover:text-brand-800 px-3 py-1.5"
