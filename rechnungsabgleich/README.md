@@ -68,13 +68,15 @@ The app never signs in with it, so it can only read.
 ## Step 2 — Verifier (do this before touching any API)
 
 ```bash
-npm i -D tsx typescript
-npx tsx shared/verifier.test.ts
+npm install
+npm test
 ```
 
-Expect `26 passed, 0 failed`. The tests use the real Bon 43413 from
-Rechnung 26-008-6253214, which reconciles to 142,46 exactly. They cover the
-cases that actually bite:
+Expect `26 passed, 0 failed` from the verifier, then `12 passed, 0 failed` from
+the read-only wrapper that keeps der Stern out of reach.
+
+The verifier tests use the real Bon 43413 from Rechnung 26-008-6253214, which
+reconciles to 142,46 exactly. They cover the cases that actually bite:
 
 - `13 × 0,625 = 8,13` — three-decimal prices and half-up rounding
 - `3 KTK × 6 DS × 2,890 = 52,02` — Karton times inner count
@@ -85,24 +87,53 @@ cases that actually bite:
 
 This file is worth more than the AI part. It is what makes a photo trustworthy.
 
+## Step 2b — First run, and proving the isolation
+
+```bash
+npm run dev
+```
+
+Sign in with the user you created in the new project. **Heute** should list
+today's suppliers with real quantities from der Stern. They appear as
+*Noch nicht zugeordneter Lieferant* until you match each one (Step 3b).
+
+Then open devtools → **Network** and confirm every request to der Stern's host
+is a `GET`. That is the safety property, checked by you rather than promised by
+this README. In the console, `sternDb().from('products').update({})` should
+throw `ReadOnlyViolation`.
+
+Stop here if you like: live data is flowing, read-only, with nothing deployed
+and no API cost yet.
+
 ## Step 3 — Extraction function
 
 ```bash
-mkdir -p supabase/functions/_shared
-cp shared/verifier.ts supabase/functions/_shared/verifier.ts
-
+supabase login
+supabase link --project-ref <rechnungsabgleich-project-ref>
+npm run sync:verifier
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase functions deploy extract-invoice
 ```
+
+**Link to the Rechnungsabgleich project, never der Stern's.** `secrets set` and
+`functions deploy` act on whichever project the CLI is currently linked to, so
+this is the one remaining step that could reach the live database — everything
+else in this app is structurally prevented from doing so. The project ref is the
+subdomain of that project's URL: `https://<ref>.supabase.co`. Confirm with
+`supabase projects list`, which marks the linked one.
 
 Uses your existing Anthropic key — same account Career-Ops runs on, so it is
 usage on a bill you already have, not a new subscription.
 
 Test against an invoice you have already reconciled by hand:
 
+Both values below are the **Rechnungsabgleich** project's, from
+Settings → API — its URL, and its service_role key (not der Stern's, and not the
+anon key):
+
 ```bash
-curl -X POST "$SUPABASE_URL/functions/v1/extract-invoice" \
-  -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+curl -X POST "$RECHNUNGSABGLEICH_URL/functions/v1/extract-invoice" \
+  -H "Authorization: Bearer $RECHNUNGSABGLEICH_SERVICE_ROLE_KEY" \
   -H "content-type: application/json" \
   -d '{"invoice_id":"<uuid>"}'
 ```
