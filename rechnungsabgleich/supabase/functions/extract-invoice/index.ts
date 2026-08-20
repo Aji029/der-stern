@@ -8,9 +8,10 @@
  * lines only if everything holds. Otherwise sets status = needs_rescan and
  * returns exactly which page and line to re-shoot.
  *
- * Deploy:
- *   supabase functions deploy extract-invoice
+ * Deploy to the RECHNUNGSABGLEICH project, not der Stern's:
+ *   supabase link --project-ref <rechnungsabgleich-ref>
  *   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+ *   supabase functions deploy extract-invoice
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -152,12 +153,12 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
-    // This app's tables live in the `rechnungsabgleich` schema — der Stern
-    // already owns public.suppliers, so the two cannot share `public`.
+    // Deployed to the Rechnungsabgleich project, so these are that project's
+    // credentials and tables. der Stern is a different project entirely and is
+    // never reached from here.
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      { db: { schema: 'rechnungsabgleich' } },
     );
 
     const { data: invoice, error } = await supabase

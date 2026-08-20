@@ -1,11 +1,17 @@
-import { sternDb } from './supabase';
+import { sternDb } from './sternDb';
 
 /**
  * Today's Pick, read live from der Stern.
  *
  * Mirrors der Stern's own useTodaysPick: take the day's orders that are still
  * open, group their items by the supplier the ARTICLE belongs to, and sum
- * quantities per article. Read-only — this never writes to public.
+ * quantities per article.
+ *
+ * Reads only orders, order_items and products — the three tables der Stern
+ * exposes to anonymous callers. It deliberately does NOT read public.suppliers,
+ * whose RLS is scoped to the owning user and would silently return nothing.
+ * Supplier names come from this app's own supplier table instead, via the
+ * stern_supplier_id link; until a supplier is linked, its id stands in.
  */
 
 export interface PickItem {
@@ -53,7 +59,11 @@ export function dayBounds(date: string): { from: string; to: string } {
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
-export async function loadTodaysPick(date: string): Promise<SupplierPick[]> {
+export async function loadTodaysPick(
+  date: string,
+  /** stern_supplier_id -> display name, from this app's own suppliers table. */
+  names: Record<string, string> = {},
+): Promise<SupplierPick[]> {
   const { from, to } = dayBounds(date);
 
   const { data, error } = await sternDb()
@@ -80,7 +90,12 @@ export async function loadTodaysPick(date: string): Promise<SupplierPick[]> {
       const key = product.supplier_id;
       let group = groups.get(key);
       if (!group) {
-        group = { stern_supplier_id: key, supplier_name: key, items: [], total_quantity: 0 };
+        group = {
+          stern_supplier_id: key,
+          supplier_name: names[key] ?? key,
+          items: [],
+          total_quantity: 0,
+        };
         groups.set(key, group);
       }
 
@@ -95,21 +110,6 @@ export async function loadTodaysPick(date: string): Promise<SupplierPick[]> {
         });
       }
       group.total_quantity += item.quantity;
-    }
-  }
-
-  // Resolve supplier names in one go; fall back to the id when a supplier row
-  // is missing so a group is never silently dropped.
-  const ids = [...groups.keys()];
-  if (ids.length > 0) {
-    const { data: suppliers } = await sternDb()
-      .from('suppliers')
-      .select('id, company_name')
-      .in('id', ids);
-
-    for (const s of (suppliers ?? []) as { id: string; company_name: string }[]) {
-      const group = groups.get(s.id);
-      if (group) group.supplier_name = s.company_name;
     }
   }
 

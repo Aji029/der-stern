@@ -1,34 +1,27 @@
 -- Rechnungsabgleich / invoice reconciliation
--- Run in Supabase SQL editor, against the same project as der Stern.
 --
--- ADAPTED FOR DER STERN — two changes from the standalone version:
+-- Run this in the SQL editor of the RECHNUNGSABGLEICH project — the new, empty
+-- one. NOT der Stern's project. der Stern's database is never modified by this
+-- app: no table, no policy, no migration. It is only ever read, anonymously,
+-- through a separate client.
 --
---   1. Everything lives in its own `rechnungsabgleich` schema. der Stern
---      already owns `public.suppliers`, so a bare `create table suppliers`
---      would silently no-op against a table with completely different
---      columns and every query would fail in a confusing way.
+-- Because this is a project of its own, the tables live in `public` here and
+-- there is nothing to add under Settings -> API -> Exposed schemas.
 --
---   2. `article_id` is TEXT, not uuid, because der Stern's articles are keyed
---      by `public.products.artikel_nr TEXT PRIMARY KEY` — there is no uuid id.
---      It is a plain column with NO foreign key: this app is deliberately
---      decoupled from der Stern. It reads public.products to match articles and
---      never writes to it, so nothing here can lock, cascade into, or otherwise
---      disturb the live shop.
---
--- After running this, add `rechnungsabgleich` under
--- Settings -> API -> Exposed schemas, or every query returns 404.
-
-create schema if not exists rechnungsabgleich;
+-- `article_id` is TEXT and carries no foreign key: it holds der Stern's
+-- `products.artikel_nr`, which lives in a different database entirely. That
+-- missing constraint is the decoupling made concrete.
 
 -- ---------------------------------------------------------------
 -- Suppliers (this app's own, with the layout hint for extraction)
 -- ---------------------------------------------------------------
-create table if not exists rechnungsabgleich.suppliers (
+create table if not exists suppliers (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
   -- how this supplier's invoice is laid out; used to pick the extraction prompt
   layout_key    text not null default 'generic',
-  -- optional link to der Stern's own public.suppliers row
+  -- der Stern's public.suppliers.id, in the OTHER project. A plain uuid
+  -- column: there is no cross-database foreign key to enforce it.
   stern_supplier_id uuid,
   created_at    timestamptz not null default now()
 );
@@ -36,9 +29,9 @@ create table if not exists rechnungsabgleich.suppliers (
 -- ---------------------------------------------------------------
 -- Invoices (one row per physical invoice, however many photo pages)
 -- ---------------------------------------------------------------
-create table if not exists rechnungsabgleich.supplier_invoices (
+create table if not exists supplier_invoices (
   id                  uuid primary key default gen_random_uuid(),
-  supplier_id         uuid not null references rechnungsabgleich.suppliers(id),
+  supplier_id         uuid not null references suppliers(id),
   invoice_no          text,
   invoice_date        date,
   page_paths          text[] not null default '{}',   -- storage paths of the photos
@@ -56,10 +49,10 @@ create table if not exists rechnungsabgleich.supplier_invoices (
 -- ---------------------------------------------------------------
 -- Extracted lines
 -- ---------------------------------------------------------------
-create table if not exists rechnungsabgleich.invoice_lines (
+create table if not exists invoice_lines (
   id               uuid primary key default gen_random_uuid(),
   invoice_id       uuid not null
-                     references rechnungsabgleich.supplier_invoices(id)
+                     references supplier_invoices(id)
                      on delete cascade,
   page_no          int  not null,
   line_no          int  not null,          -- order within the page
@@ -81,22 +74,22 @@ create table if not exists rechnungsabgleich.invoice_lines (
 );
 
 create index if not exists invoice_lines_artnr_idx
-  on rechnungsabgleich.invoice_lines (supplier_art_nr);
+  on invoice_lines (supplier_art_nr);
 
 create index if not exists invoice_lines_invoice_idx
-  on rechnungsabgleich.invoice_lines (invoice_id);
+  on invoice_lines (invoice_id);
 
 -- ---------------------------------------------------------------
 -- Article mapping: the table that kills the repetition
 -- Learned once per supplier article, then permanent.
 -- ---------------------------------------------------------------
-create table if not exists rechnungsabgleich.article_mappings (
+create table if not exists article_mappings (
   id               uuid primary key default gen_random_uuid(),
-  supplier_id      uuid not null references rechnungsabgleich.suppliers(id),
+  supplier_id      uuid not null references suppliers(id),
   supplier_art_nr  text not null,
-  -- der Stern's public.products.artikel_nr. Intentionally NOT a foreign key —
-  -- see the header. A deleted article leaves a stale mapping here, which is
-  -- harmless: the review screen simply shows it as unmapped again.
+  -- der Stern's products.artikel_nr, from the OTHER project. A deleted article
+  -- leaves a stale mapping here, which is harmless: the review screen simply
+  -- shows it as unmapped again.
   article_id       text not null,
   -- how many of YOUR units one invoice unit contains.
   -- 1 for a straight match. 12 when the invoice bills a Karton
@@ -119,9 +112,9 @@ create table if not exists rechnungsabgleich.article_mappings (
 -- transcribing a price across by hand will round it — that rounding happens
 -- there, not here.
 -- ---------------------------------------------------------------
-create table if not exists rechnungsabgleich.price_change_log (
+create table if not exists price_change_log (
   id            uuid primary key default gen_random_uuid(),
-  invoice_id    uuid not null references rechnungsabgleich.supplier_invoices(id),
+  invoice_id    uuid not null references supplier_invoices(id),
   article_id    text not null,
   old_price     numeric(12,4),
   new_price     numeric(12,4) not null,
@@ -130,17 +123,16 @@ create table if not exists rechnungsabgleich.price_change_log (
 );
 
 create index if not exists price_change_log_article_idx
-  on rechnungsabgleich.price_change_log (article_id, applied_at desc);
+  on price_change_log (article_id, applied_at desc);
 
 -- ---------------------------------------------------------------
--- RLS. der Stern's own tables are readable by any authenticated user,
--- so these match that: signed in means allowed.
+-- RLS. This project has exactly one user — you — so signed in means allowed.
 -- ---------------------------------------------------------------
-alter table rechnungsabgleich.suppliers          enable row level security;
-alter table rechnungsabgleich.supplier_invoices  enable row level security;
-alter table rechnungsabgleich.invoice_lines      enable row level security;
-alter table rechnungsabgleich.article_mappings   enable row level security;
-alter table rechnungsabgleich.price_change_log   enable row level security;
+alter table suppliers          enable row level security;
+alter table supplier_invoices  enable row level security;
+alter table invoice_lines      enable row level security;
+alter table article_mappings   enable row level security;
+alter table price_change_log   enable row level security;
 
 do $$
 declare t text;
@@ -150,7 +142,7 @@ begin
     'article_mappings','price_change_log'
   ] loop
     execute format(
-      'create policy %I on rechnungsabgleich.%I
+      'create policy %I on %I
          for all to authenticated using (true) with check (true)',
       t || '_authenticated', t
     );
@@ -158,13 +150,13 @@ begin
 exception when duplicate_object then null;
 end $$;
 
-grant usage on schema rechnungsabgleich to authenticated;
-grant all on all tables in schema rechnungsabgleich to authenticated;
+grant usage on schema public to authenticated;
+grant all on all tables in schema public to authenticated;
 
 -- ---------------------------------------------------------------
 -- Seed the suppliers
 -- ---------------------------------------------------------------
-insert into rechnungsabgleich.suppliers (name, layout_key)
+insert into suppliers (name, layout_key)
 values ('Hamberger Großmarkt Berlin', 'hamberger'),
        ('Gemex Handels GmbH',         'gemex')
 on conflict do nothing;

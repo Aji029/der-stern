@@ -31,19 +31,21 @@ export default function TodayPage() {
     setLoading(true);
     setError(null);
     try {
-      const [pickRows, { data: supplierRows }] = await Promise.all([
-        loadTodaysPick(date),
-        supabase.from('suppliers').select('id, name, layout_key, stern_supplier_id').order('name'),
-      ]);
+      // Our own suppliers first: they carry the display names, because der
+      // Stern's suppliers table is not readable anonymously.
+      const { data: supplierRows } = await supabase
+        .from('suppliers')
+        .select('id, name, layout_key, stern_supplier_id')
+        .order('name');
 
-      setPicks(pickRows);
       const rows = (supplierRows ?? []) as Array<Supplier & { stern_supplier_id: string | null }>;
       setSuppliers(rows);
-      setLinks(
-        Object.fromEntries(
-          rows.filter(r => r.stern_supplier_id).map(r => [r.stern_supplier_id as string, r.id]),
-        ),
-      );
+
+      const linked = rows.filter(r => r.stern_supplier_id);
+      setLinks(Object.fromEntries(linked.map(r => [r.stern_supplier_id as string, r.id])));
+
+      const names = Object.fromEntries(linked.map(r => [r.stern_supplier_id as string, r.name]));
+      setPicks(await loadTodaysPick(date, names));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -191,7 +193,9 @@ export default function TodayPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
                 <div className="min-w-0">
-                  <h2 className="font-semibold text-gray-900 truncate">{pick.supplier_name}</h2>
+                  <h2 className="font-semibold text-gray-900 truncate">
+                    {linkedId ? pick.supplier_name : 'Noch nicht zugeordneter Lieferant'}
+                  </h2>
                   <p className="text-sm text-gray-500">
                     {pick.items.length} {pick.items.length === 1 ? 'Artikel' : 'Artikel'} ·{' '}
                     {quantity(pick.total_quantity)} Stück · {euro(value)} € EK

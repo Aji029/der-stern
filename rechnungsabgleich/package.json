@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "tsx shared/verifier.test.ts",
+    "test": "tsx shared/verifier.test.ts && tsx src/lib/readOnly.test.ts",
     "sync:verifier": "cp shared/verifier.ts supabase/functions/_shared/verifier.ts"
   },
   "dependencies": {

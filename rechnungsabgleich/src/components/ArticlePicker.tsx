@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { sternDb, ARTICLES_TABLE } from '../lib/supabase';
+import { sternDb, ARTICLES_TABLE } from '../lib/sternDb';
 import { price } from '../lib/format';
 import type { Article } from '../types';
 

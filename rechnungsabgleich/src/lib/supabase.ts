@@ -8,9 +8,12 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 /**
- * App tables live in the `rechnungsabgleich` schema. der Stern already owns
- * `public.suppliers`, so sharing `public` would collide. This schema must be
- * listed under Settings -> API -> Exposed schemas, or every query returns 404.
+ * Rechnungsabgleich's OWN Supabase project — a different database from der
+ * Stern's. Everything this app writes (invoices, extracted lines, article
+ * mappings, confirmed prices) lives here, so no mistake in this app can reach
+ * the live shop.
+ *
+ * der Stern is read through a separate client; see ./sternDb.
  */
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -18,24 +21,8 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
-  db: { schema: 'rechnungsabgleich' },
   global: { headers: { 'x-application-name': 'rechnungsabgleich' } },
 });
-
-/**
- * der Stern's article table. The one place this app touches `public` — and it
- * only ever READS. No price update, no cascade into open orders, nothing that
- * can disturb the live shop.
- *
- * Keyed by `artikel_nr` (TEXT). If your articles live somewhere other than
- * public.products, this constant, ARTICLES_KEY and the `Article` type in
- * src/types.ts are the only things to change.
- */
-export const ARTICLES_TABLE = 'products';
-export const ARTICLES_KEY = 'artikel_nr';
-
-/** Read der Stern's tables from the same authenticated client. Reads only. */
-export const sternDb = () => supabase.schema('public');
 
 /** Invoke the extraction function with the signed-in user's token. */
 export async function extractInvoice(invoiceId: string): Promise<{

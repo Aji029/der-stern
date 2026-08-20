@@ -11,10 +11,20 @@ arrive, what arrived that was not ordered, and where quantities differ.
 The design principle throughout: **extraction is the model's job, verification is
 arithmetic's job, mapping decisions are yours.**
 
-This app is **read-only against der Stern.** It reads `public.products` to match
-articles and never writes to it. Confirming a price records it here, in this
-app's own tables — der Stern is not modified, no trigger fires, and no open
-order moves. Nothing about running this can disturb the live shop.
+**der Stern cannot be affected by this app.** That is structural, not a promise:
+
+- This app has its **own Supabase project**. Every table it writes lives there,
+  in a different database from the live shop.
+- der Stern is read through a **separate client that is never signed in**. Its
+  own RLS allows anonymous `SELECT` on products, orders and order_items, and
+  requires `authenticated` for every write — so Postgres itself refuses a write
+  from this app. A wrapper also throws on `insert`/`update`/`upsert`/`delete`,
+  so a mistake fails loudly at the call site instead of relying on that policy.
+- **Nothing is ever run against der Stern's database.** No migration, no table,
+  no policy, no trigger.
+
+Confirming a price records it in this app's own project. der Stern's prices are
+not changed; updating the shop stays a separate, deliberate act.
 
 ---
 
@@ -30,28 +40,30 @@ src/InvoiceReview.tsx                      the one screen you touch daily
 
 ---
 
-## Step 1 — Schema
+## Step 1 — A project of its own
 
-Paste `db/001_schema.sql` into the Supabase SQL editor and run it, against the
-**same project as der Stern**.
+Create a **new, empty Supabase project** for Rechnungsabgleich. Do not use der
+Stern's. This separation is the whole safety story: a mistake in this app lands
+in a different database.
 
-Then create a **private** Storage bucket called `invoices`.
+In that new project:
 
-Then add `rechnungsabgleich` under **Settings → API → Exposed schemas**.
-Without this every query returns 404.
+1. Run `db/001_schema.sql` in the SQL editor. Tables land in `public` — there is
+   no schema to expose, because the project is not shared with anything.
+2. Create a **private** Storage bucket called `invoices`.
+3. Create your login under Authentication → Users. It is a separate project, so
+   it has its own users; reuse your der Stern email if you like, but the
+   password is set here.
 
-The three adaptations to der Stern are already applied in the SQL:
+The two suppliers are seeded by the same SQL file.
 
-- **Own schema.** Tables live in `rechnungsabgleich`, not `public`. der Stern
-  already owns `public.suppliers` — a bare `create table suppliers` would
-  silently no-op against a table with entirely different columns, and every
-  query would then fail in a confusing way.
-- **`article_id` is TEXT with a real FK** to `public.products(artikel_nr)`.
-  der Stern's articles have no uuid id; `artikel_nr` is the primary key.
-- **RLS policies are filled in**, matching how der Stern scopes its own
-  tables: signed in means allowed.
+## Step 1b — Point at der Stern, read-only
 
-The two suppliers are seeded by the same file — no separate insert needed.
+Copy `.env.example` to `.env` and fill in **four** values: the new project's URL
+and anon key, and der Stern's URL and anon key.
+
+der Stern's anon key is the one already shipping in the live site's JavaScript.
+The app never signs in with it, so it can only read.
 
 ## Step 2 — Verifier (do this before touching any API)
 
@@ -102,16 +114,18 @@ If `warenwert` does not match the paper, stop and fix before going further.
 ## Step 3b — Link each supplier once
 
 The **Heute** screen reads der Stern's open orders for the day and groups them
-by the supplier the article belongs to. To photograph a supplier's invoice, that
-der Stern supplier has to be matched once to one of this app's suppliers,
-because the extraction prompt depends on the invoice layout. The screen offers
-the choice inline; it is remembered in `suppliers.stern_supplier_id`.
+by the supplier the article belongs to. That grouping only has der Stern's
+supplier **id** to go on — `public.suppliers` is scoped to its owning user and
+is not readable anonymously, so supplier names come from this app's own table
+instead. Match each der Stern supplier once to one of this app's suppliers
+(which also picks the invoice layout for extraction); it is remembered in
+`suppliers.stern_supplier_id`, and the name appears from then on.
 
 ## Step 4 — Review screen
 
-Already wired: `src/InvoiceReview.tsx` **reads** `public.products`
-(`artikel_nr`, `name`, `ek_price`) through `sternDb()`, styled to match der
-Stern. Only the articles referenced by this supplier's mappings are loaded, not
+Already wired: `src/InvoiceReview.tsx` **reads** der Stern's `products`
+(`artikel_nr`, `name`, `ek_price`) through the read-only `sternDb()`, styled to
+match der Stern. Only the articles referenced by this supplier's mappings are loaded, not
 the whole product table.
 
 Three behaviours worth knowing:

@@ -19,7 +19,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Check, Link2, RefreshCw } from 'lucide-react';
-import { supabase, sternDb, ARTICLES_TABLE, ARTICLES_KEY } from './lib/supabase';
+import { supabase } from './lib/supabase';
+import { sternDb, ARTICLES_TABLE, ARTICLES_KEY } from './lib/sternDb';
 import {
   diffPrices,
   type DiffRow,
