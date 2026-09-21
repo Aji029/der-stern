@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { ERechenungPDF } from '../../components/pdf/ERechenungPDF';
 import { generateZugferdXml } from '../../utils/zugferd/generateXml';
 import { embedZugferdXml } from '../../utils/zugferd/embedXml';
+import { gutschriftDisplayName } from '../../utils/orderCalculations';
 import type { Order } from '../../types/order';
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ function transformOrder(order: any): Order {
       packedBy: item.packed_by || undefined,
       product: {
         artikelNr: item.product?.artikel_nr || '',
-        name: item.product?.name || '',
+        name: gutschriftDisplayName(item.product?.name, parseFloat(item.vk_price)),
         mwst: item.mwst || item.product?.mwst,
         supplierId: item.supplier_id || item.product?.supplier_id,
       },

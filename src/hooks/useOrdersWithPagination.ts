@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { gutschriftDisplayName } from '../utils/orderCalculations';
 import type { Order } from '../types/order';
 
 export type OrderStatusFilter = 'pending' | 'completed' | 'all';
@@ -215,7 +216,7 @@ export function useOrdersWithPagination(pageSize: number = 10) {
           total: Number(item.total) || 0,
           product: {
             artikelNr: item.product?.artikel_nr || '',
-            name: item.product?.name || '',
+            name: gutschriftDisplayName(item.product?.name, Number(item.vk_price) || 0),
             mwst: item.product?.mwst || 'A',
             supplierId: item.product?.supplier_id
           }

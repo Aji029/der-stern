@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../../context/OrderContext';
 import { useProducts } from '../../../context/ProductContext';
 import { supabase } from '../../../lib/supabase';
-import { calculateOrderTotal } from '../../../utils/orderCalculations';
+import { calculateOrderTotal, gutschriftDisplayName, isLegacyDiscountSuperseded } from '../../../utils/orderCalculations';
 import type { Order, OrderItem, OrderDiscount } from '../../../types/order';
 
 export function useOrderEdit(orderId: string) {
@@ -66,7 +66,7 @@ export function useOrderEdit(orderId: string) {
               packedBy: item.packed_by || undefined,
               product: {
                 artikelNr: item.product?.artikel_nr || '',
-                name: item.product?.name || '',
+                name: gutschriftDisplayName(item.product?.name, parseFloat(item.vk_price)),
                 mwst: item.mwst || item.product?.mwst,
                 supplierId: item.supplier_id || item.product?.supplier_id
               }
@@ -170,12 +170,19 @@ export function useOrderEdit(orderId: string) {
   const handleRemoveItem = useCallback((index: number) => {
     if (!order) return;
 
+    const removed = order.items[index];
     const updatedItems = order.items.filter((_, i) => i !== index);
-    const { totalAmount, finalAmount } = calculateOrderTotal(updatedItems, order.discount);
+    // Removing a credit line must not resurrect the legacy discount object
+    // that older versions stored alongside it.
+    const discount = removed && isLegacyDiscountSuperseded([removed], order.discount)
+      ? undefined
+      : order.discount;
+    const { totalAmount, finalAmount } = calculateOrderTotal(updatedItems, discount);
 
     setOrder(prev => ({
       ...prev!,
       items: updatedItems,
+      discount,
       totalAmount,
       finalAmount
     }));
