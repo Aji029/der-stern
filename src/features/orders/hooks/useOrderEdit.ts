@@ -181,6 +181,36 @@ export function useOrderEdit(orderId: string) {
     }));
   }, [order]);
 
+  // Credit a returned item: a normal line with a NEGATIVE VK price carrying the
+  // product's own MwSt rate, so every invoice reduces net and tax correctly.
+  const handleAddGutschrift = useCallback((product: any, quantity: number = 1) => {
+    if (!order) return;
+
+    const unit = Math.abs(Number(product.vkPrice) || 0);
+    const creditLine: OrderItem = {
+      product: {
+        artikelNr: product.artikelNr,
+        name: `Gutschrift: ${product.name}`,
+        mwst: product.mwst,
+        supplierId: product.supplierId,
+      },
+      quantity,
+      ekPrice: 0,
+      vkPrice: -unit,
+      total: -(quantity * unit),
+    };
+
+    const updatedItems = [...order.items, creditLine];
+    const { totalAmount, finalAmount } = calculateOrderTotal(updatedItems, order.discount);
+
+    setOrder(prev => ({
+      ...prev!,
+      items: updatedItems,
+      totalAmount,
+      finalAmount
+    }));
+  }, [order]);
+
   const handleUpdateDiscount = useCallback((discount: OrderDiscount | undefined) => {
     if (!order) return;
 
@@ -220,6 +250,7 @@ export function useOrderEdit(orderId: string) {
     handleUpdateOrder: setOrder,
     handleUpdateItem,
     handleAddItem,
+    handleAddGutschrift,
     handleRemoveItem,
     handleUpdateDiscount,
     handleSubmit

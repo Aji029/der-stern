@@ -5,6 +5,7 @@ import { SupplierSelect } from '../../../../components/orders/SupplierSelect';
 import { EditablePrice } from '../../../../components/ui/EditablePrice';
 import { ProfitMarginDisplay } from '../../../../components/ProfitMarginDisplay';
 import { formatPrice, calculateProfitAmount } from '../../../../utils/priceCalculations';
+import { isGutschriftLine } from '../../../../utils/orderCalculations';
 import { useVKPriceUpdate } from '../../../../hooks/useVKPriceUpdate';
 import { useEKPriceUpdate } from '../../../../hooks/useEKPriceUpdate';
 import type { OrderItem, OrderDiscount } from '../../../../types/order';
@@ -16,6 +17,7 @@ interface OrderItemsProps {
   customerName?: string;
   onUpdateItem: (index: number, updates: Partial<OrderItem>) => void;
   onAddItem: (product: any) => void;
+  onAddGutschrift?: (product: any) => void;
   onRemoveItem: (index: number) => void;
   onUpdateDiscount: (discount: OrderDiscount | undefined) => void;
 }
@@ -27,11 +29,13 @@ export function OrderItems({
   customerName,
   onUpdateItem,
   onAddItem,
+  onAddGutschrift,
   onRemoveItem,
   onUpdateDiscount,
 }: OrderItemsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'packed'>('all');
   const [showPackedItems, setShowPackedItems] = useState(true);
+  const [showGutschrift, setShowGutschrift] = useState(false);
 
   const packedCount = items.filter(item => item.isPacked).length;
   const unpackedCount = items.length - packedCount;
@@ -68,6 +72,43 @@ export function OrderItems({
             selectedProducts={items.map(item => item.product.artikelNr)}
           />
         </div>
+
+        {/* Gutschrift — credit a returned item as a negative line; its MwSt is reduced at its own rate.
+            Only offered when the parent wires onAddGutschrift. */}
+        {onAddGutschrift && (
+          <div className="mb-4">
+            {!showGutschrift ? (
+              <button
+                type="button"
+                onClick={() => setShowGutschrift(true)}
+                className="w-full px-3 py-2 rounded-lg border border-dashed border-red-300 text-red-600 text-sm font-medium hover:bg-red-50 active:scale-95 transition-all"
+              >
+                + Add Gutschrift (returned item)
+              </button>
+            ) : (
+              <div className="p-3 rounded-lg border border-red-200 bg-red-50 space-y-2">
+                <p className="text-xs font-semibold text-red-700">
+                  Gutschrift — pick the product the customer returned
+                </p>
+                <ProductSearchInput
+                  onSelect={(product: any) => {
+                    onAddGutschrift?.(product);
+                    setShowGutschrift(false);
+                  }}
+                  placeholder="Search returned product to credit..."
+                  selectedProducts={[]}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGutschrift(false)}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Packing Progress — brand yellow */}
         <div className="mb-3 p-2.5 bg-brand-50 rounded-lg border border-brand-200">
@@ -262,8 +303,15 @@ function OrderItemCard({
   const { updatePriceAndOrders: updateEKPriceAndOrders } = useEKPriceUpdate();
   const [vkError, setVkError] = useState<string | null>(null);
   const [ekError, setEkError] = useState<string | null>(null);
+  const isCredit = isGutschriftLine(item);
 
   const handleVKChange = (value: number) => {
+    // A credit line stays negative and must never write back to the product catalog.
+    if (isCredit) {
+      const vk = -Math.abs(value);
+      onUpdateItem(actualIndex, { vkPrice: vk, total: item.quantity * vk });
+      return;
+    }
     onUpdateItem(actualIndex, { vkPrice: value, total: item.quantity * value });
     if (item.product.artikelNr) {
       setVkError(null);
@@ -275,6 +323,10 @@ function OrderItemCard({
   };
 
   const handleEKChange = (value: number) => {
+    if (isCredit) {
+      onUpdateItem(actualIndex, { ekPrice: 0 });
+      return;
+    }
     onUpdateItem(actualIndex, { ekPrice: value });
     if (item.product.artikelNr) {
       setEkError(null);
@@ -322,6 +374,11 @@ function OrderItemCard({
                 <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">
                   {item.product.mwst === 'A' ? '7%' : '19%'}
                 </span>
+                {isCredit && (
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-semibold">
+                    Gutschrift
+                  </span>
+                )}
                 {item.isPacked && (
                   <span className="px-1.5 py-0.5 bg-green-600 text-white rounded font-medium text-[10px]">
                     ✓ Packed
