@@ -40,6 +40,9 @@ export function InvoiceSummary({ items }: InvoiceSummaryProps) {
 
   const vatAmountA = calculateVatAmount(items, 'A');
   const vatAmountB = calculateVatAmount(items, 'B');
+  // Show a rate whenever any line uses it — a Gutschrift can make its VAT negative.
+  const hasA = items.some(item => item.product.mwst === 'A');
+  const hasB = items.some(item => item.product.mwst === 'B');
   const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.vkPrice), 0);
   const total = subtotal + vatAmountA + vatAmountB;
 
@@ -50,13 +53,13 @@ export function InvoiceSummary({ items }: InvoiceSummaryProps) {
           <Text style={styles.totalLabel}>Netto:</Text>
           <Text style={styles.totalAmount}>{formatPrice(subtotal)}</Text>
         </View>
-        {vatAmountA > 0 && (
+        {hasA && (
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>MwSt. 7%:</Text>
             <Text style={styles.totalAmount}>{formatPrice(vatAmountA)}</Text>
           </View>
         )}
-        {vatAmountB > 0 && (
+        {hasB && (
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>MwSt. 19%:</Text>
             <Text style={styles.totalAmount}>{formatPrice(vatAmountB)}</Text>

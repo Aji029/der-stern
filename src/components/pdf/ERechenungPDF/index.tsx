@@ -19,17 +19,22 @@ const fmtIban = (s: string) => s.replace(/(.{4})/g, '$1 ').trim();
 
 function calcVat(order: Order) {
   const items = order.items;
-  const nettoA = items
-    .filter(i => i.product.mwst === 'A')
-    .reduce((s, i) => s + i.quantity * i.vkPrice, 0);
-  const nettoB = items
-    .filter(i => i.product.mwst === 'B')
-    .reduce((s, i) => s + i.quantity * i.vkPrice, 0);
+  const linesA = items.filter(i => i.product.mwst === 'A');
+  const linesB = items.filter(i => i.product.mwst === 'B');
+  const nettoA = linesA.reduce((s, i) => s + i.quantity * i.vkPrice, 0);
+  const nettoB = linesB.reduce((s, i) => s + i.quantity * i.vkPrice, 0);
   const vatA = nettoA * 0.07;
   const vatB = nettoB * 0.19;
   const totalNetto = nettoA + nettoB;
   const totalVat = vatA + vatB;
-  return { nettoA, vatA, nettoB, vatB, totalNetto, totalVat, brutto: totalNetto + totalVat };
+  // A rate is shown whenever any line uses it — a Gutschrift can make a rate's
+  // net negative or zero, and that row must still appear so the totals add up.
+  return {
+    nettoA, vatA, nettoB, vatB, totalNetto, totalVat,
+    brutto: totalNetto + totalVat,
+    hasA: linesA.length > 0,
+    hasB: linesB.length > 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -443,13 +448,13 @@ export function ERechenungPDF({ order, invoiceNumber }: Props) {
 
         {/* ── VAT Summary ── */}
         <View style={S.summaryOuter}>
-          {vat.nettoA > 0 && (
+          {vat.hasA && (
             <View style={S.sumRow}>
               <Text style={S.sumLabel}>Nettobetrag 7% (A):</Text>
               <Text style={S.sumValue}>{fmtEur(vat.nettoA)}</Text>
             </View>
           )}
-          {vat.nettoB > 0 && (
+          {vat.hasB && (
             <View style={S.sumRow}>
               <Text style={S.sumLabel}>Nettobetrag 19% (B):</Text>
               <Text style={S.sumValue}>{fmtEur(vat.nettoB)}</Text>
@@ -459,13 +464,13 @@ export function ERechenungPDF({ order, invoiceNumber }: Props) {
             <Text style={S.sumLabel}>Gesamtnettobetrag:</Text>
             <Text style={S.sumValue}>{fmtEur(vat.totalNetto)}</Text>
           </View>
-          {vat.nettoA > 0 && (
+          {vat.hasA && (
             <View style={S.sumRow}>
               <Text style={S.sumLabel}>MwSt. 7% (A):</Text>
               <Text style={S.sumValue}>{fmtEur(vat.vatA)}</Text>
             </View>
           )}
-          {vat.nettoB > 0 && (
+          {vat.hasB && (
             <View style={S.sumRow}>
               <Text style={S.sumLabel}>MwSt. 19% (B):</Text>
               <Text style={S.sumValue}>{fmtEur(vat.vatB)}</Text>
