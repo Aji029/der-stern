@@ -28,14 +28,15 @@ export function DashboardPage() {
       supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase.from('customers').select('*', { count: 'exact', head: true }),
       supabase.from('suppliers').select('*', { count: 'exact', head: true }),
-      supabase.from('orders').select('total_amount').eq('status', 'Completed'),
+      // final_amount is the net after any Gutschrift; total_amount is before it.
+      supabase.from('orders').select('final_amount').eq('status', 'Completed'),
     ]).then(([products, customers, suppliers, revenue]) => {
       setCounts({
         products: products.count ?? 0,
         customers: customers.count ?? 0,
         suppliers: suppliers.count ?? 0,
       });
-      const total = (revenue.data || []).reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
+      const total = (revenue.data || []).reduce((sum, o) => sum + parseFloat(o.final_amount || '0'), 0);
       setTotalRevenue(total);
     });
   }, []);
@@ -48,7 +49,7 @@ export function DashboardPage() {
 
     supabase
       .from('orders')
-      .select('order_date, total_amount')
+      .select('order_date, final_amount')
       .not('status', 'eq', 'Cancelled')
       .gte('order_date', since.toISOString())
       .then(({ data }) => {
@@ -62,7 +63,8 @@ export function DashboardPage() {
         }
         (data || []).forEach(o => {
           const key = toLocalKey(new Date(o.order_date));
-          if (key in map) map[key] += parseFloat(o.total_amount || '0');
+          // Net after Gutschrift, so a returned item reduces the day it was credited on.
+          if (key in map) map[key] += parseFloat(o.final_amount || '0');
         });
         const result: DayRevenue[] = Object.entries(map).map(([date, amount]) => {
           const d = new Date(date + 'T12:00:00');
