@@ -18,6 +18,7 @@ export function EditOrderForm() {
     handleUpdateOrder,
     handleUpdateItem,
     handleAddItem,
+    handleAddGutschrift,
     handleRemoveItem,
     handleUpdateDiscount,
     handleSubmit
@@ -64,6 +65,7 @@ export function EditOrderForm() {
         customerName={order.customer.companyName}
         onUpdateItem={handleUpdateItem}
         onAddItem={handleAddItem}
+        onAddGutschrift={handleAddGutschrift}
         onRemoveItem={handleRemoveItem}
         onUpdateDiscount={handleUpdateDiscount}
       />

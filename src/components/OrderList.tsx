@@ -137,7 +137,7 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
                 Items
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Total
+                Total (Netto)
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -177,7 +177,7 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                  {formatPrice(order.totalAmount)}
+                  {formatPrice(order.finalAmount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   {(order.status === 'Pending' || order.status === 'Processing') ? (
@@ -299,8 +299,8 @@ export function OrderList({ orders, isLoading, error, statusFilter = 'all', onRe
                 <div className="font-medium">{order.items.length} items</div>
               </div>
               <div className="col-span-2">
-                <span className="text-gray-500">Total:</span>
-                <div className="font-bold text-lg">{formatPrice(order.totalAmount)}</div>
+                <span className="text-gray-500">Total (Netto):</span>
+                <div className="font-bold text-lg">{formatPrice(order.finalAmount)}</div>
               </div>
             </div>
 
