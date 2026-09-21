@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { calculateOrderTotal } from '../utils/orderCalculations';
+import { calculateOrderTotal, gutschriftDisplayName, isLegacyDiscountSuperseded } from '../utils/orderCalculations';
 import type { Order } from '../types/order';
 
 interface OrderContextType {
@@ -49,7 +49,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       packedBy: item.packed_by || undefined,
       product: {
         artikelNr: item.product?.artikel_nr || '',
-        name: item.product?.name || '',
+        name: gutschriftDisplayName(item.product?.name, parseFloat(item.vk_price)),
         mwst: item.mwst || item.product?.mwst,
         supplierId: item.supplier_id || item.product?.supplier_id
       }
@@ -211,7 +211,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
           payment_status: order.paymentStatus,
           shipping_address: order.shippingAddress,
           notes: order.notes,
-          discount: order.discount || null,
+          // Drop the legacy discount object once the credit exists as a line.
+          discount: isLegacyDiscountSuperseded(order.items, order.discount) ? null : (order.discount || null),
           user_id: user.id,
           updated_at: new Date().toISOString()
         })
