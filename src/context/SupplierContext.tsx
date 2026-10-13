@@ -8,6 +8,8 @@ interface SupplierContextType {
   updateSupplier: (id: string, supplier: Supplier) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
   getSupplier: (id: string) => Supplier | undefined;
+  /** Optimistic update of the Today's Pick group order (no reload, no spinner). */
+  patchPickPositions: (changes: { id: string; position: number | null }[]) => void;
   isLoading: boolean;
   error: string | null;
 }
@@ -79,6 +81,14 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
     return suppliers.find(supplier => supplier.id === id);
   };
 
+  const patchPickPositions = (changes: { id: string; position: number | null }[]) => {
+    if (changes.length === 0) return;
+    const byId = new Map(changes.map(c => [c.id, c.position]));
+    setSuppliers(prev => prev.map(s =>
+      byId.has(s.id) ? { ...s, pickPosition: byId.get(s.id) ?? null } : s
+    ));
+  };
+
   return (
     <SupplierContext.Provider value={{
       suppliers,
@@ -86,6 +96,7 @@ export function SupplierProvider({ children }: { children: React.ReactNode }) {
       updateSupplier: updateSupplierContext,
       deleteSupplier: deleteSupplierContext,
       getSupplier,
+      patchPickPositions,
       isLoading,
       error,
     }}>

@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOrders } from '../../../context/OrderContext';
 import { useSuppliers } from '../../../context/SupplierContext';
+import { useProducts } from '../../../context/ProductContext';
 import { isSameDay } from '../../../utils/dateFormatting';
+import { comparePickOrder } from '../../../utils/pickOrder';
 import type { OrderItem } from '../../../types/order';
 
 export interface GroupedOrders {
@@ -13,8 +15,16 @@ export interface GroupedOrders {
 export function useTodaysPick(selectedDate: string) {
   const { orders, isLoading: ordersLoading, error: ordersError, refreshOrders } = useOrders();
   const { suppliers } = useSuppliers();
+  const { products } = useProducts();
   const [groupedOrders, setGroupedOrders] = useState<GroupedOrders[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Store-walk order: article -> pick position from the catalog.
+  const productPositions = useMemo(() => {
+    const map = new Map<string, number | null>();
+    for (const p of products) if (p.pickPosition != null) map.set(p.artikelNr, p.pickPosition);
+    return map;
+  }, [products]);
 
   useEffect(() => {
     try {
@@ -65,13 +75,21 @@ export function useTodaysPick(selectedDate: string) {
         });
       });
 
+      // Store-walk order: groups by the supplier's pick position, articles by
+      // the product's pick position; anything without a position stays
+      // alphabetical at the end.
+      const supplierPosition = (id: string) => suppliers.find(s => s.id === id)?.pickPosition;
       const sortedGroups = Array.from(supplierGroups.values())
-        .sort((a, b) => (a.supplierName ?? '').localeCompare(b.supplierName ?? ''))
+        .sort((a, b) => comparePickOrder(
+          supplierPosition(a.supplierId), a.supplierName ?? '',
+          supplierPosition(b.supplierId), b.supplierName ?? ''
+        ))
         .map(group => ({
           ...group,
-          items: group.items.sort((a, b) =>
-            (a.product?.name ?? '').localeCompare(b.product?.name ?? '')
-          ),
+          items: group.items.sort((a, b) => comparePickOrder(
+            productPositions.get(a.product?.artikelNr ?? ''), a.product?.name ?? '',
+            productPositions.get(b.product?.artikelNr ?? ''), b.product?.name ?? ''
+          )),
         }));
 
       setGroupedOrders(sortedGroups);
@@ -79,7 +97,7 @@ export function useTodaysPick(selectedDate: string) {
       console.error('Error processing orders:', err);
       setError(err.message);
     }
-  }, [orders, suppliers, selectedDate]);
+  }, [orders, suppliers, selectedDate, productPositions]);
 
   return {
     groupedOrders,
