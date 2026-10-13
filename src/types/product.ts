@@ -11,4 +11,6 @@ export interface Product {
   supplierId?: string;
   image?: string | null;
   istBestand?: number;
+  /** Position on the walk through the market (Today's Pick). Lower = picked first. */
+  pickPosition?: number | null;
 }

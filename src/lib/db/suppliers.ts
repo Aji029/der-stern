@@ -40,11 +40,31 @@ export async function fetchSuppliers(): Promise<Supplier[]> {
       paymentTerms: item.payment_terms,
       supplierType: item.supplier_type,
       rating: item.rating,
-      notes: item.notes
+      notes: item.notes,
+      pickPosition: typeof item.pick_position === 'number' ? item.pick_position : null
     }));
   } catch (error) {
     console.error('Failed to fetch suppliers:', error);
     throw error;
+  }
+}
+
+/** Store-walk order for Today's Pick: the order of the supplier groups. */
+export async function updateSupplierPickPositions(
+  changes: { id: string; position: number | null }[]
+): Promise<void> {
+  const results = await Promise.all(
+    changes.map(({ id, position }) =>
+      supabase
+        .from('suppliers')
+        .update({ pick_position: position })
+        .eq('id', id)
+        .select('id')
+    )
+  );
+  for (const { error, data } of results) {
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('Supplier order update failed: supplier not found or access denied.');
   }
 }
 

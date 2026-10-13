@@ -11,6 +11,7 @@ interface ProductContextType {
   patchEKPrice: (artikelNr: string, newPrice: number) => void;
   patchVKPrice: (artikelNr: string, newPrice: number) => void;
   patchSupplier: (artikelNr: string, supplierId: string) => void;
+  patchPickPosition: (artikelNr: string, position: number | null) => void;
   isLoading: boolean;
   error: string | null;
   refreshProducts: () => Promise<void>;
@@ -164,6 +165,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
+  const patchPickPosition = (artikelNr: string, position: number | null) => {
+    setProducts(prev => prev.map(p =>
+      p.artikelNr === artikelNr ? { ...p, pickPosition: position } : p
+    ));
+  };
+
   const deleteProduct = async (artikelNr: string) => {
     try {
       setIsLoading(true);
@@ -192,6 +199,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       patchEKPrice,
       patchVKPrice,
       patchSupplier,
+      patchPickPosition,
       isLoading,
       error,
       refreshProducts: loadProducts
@@ -224,6 +232,7 @@ function mapProductFromDB(item: any): Product {
     image: item.image_url,
     istBestand: item.ist_bestand || 0,
     bestellnummer: item.bestellnummer,
+    pickPosition: typeof item.pick_position === 'number' ? item.pick_position : null,
   };
 }
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useState, lazy, Suspense } from 'react';
-import { Package, Loader, FileText, ScanLine, CheckCircle2, X, ChevronDown } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { Package, Loader, FileText, ScanLine, CheckCircle2, X, ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 const BillScanSheet = lazy(() =>
   import('../../../../features/supplierBills/components/BillScanSheet').then(m => ({ default: m.BillScanSheet }))
 );
@@ -10,10 +10,60 @@ import { calculateSupplierTotals } from '../../../../utils/supplierCalculations'
 import { useEKPriceUpdate } from '../../../../hooks/useEKPriceUpdate';
 import { useSupplierUpdate } from '../../../../hooks/useSupplierUpdate';
 import { useSuppliers } from '../../../../context/SupplierContext';
+import { useProducts } from '../../../../context/ProductContext';
+import { usePickOrder } from '../../hooks/usePickOrder';
+import { parsePosition } from '../../../../utils/pickOrder';
 import { SupplierSummary } from './SupplierSummary';
 import { PDFButton } from './PDFButton';
 import type { GroupedOrders } from '../../hooks/useTodaysPick';
 import type { OrderItem } from '../../../../types/order';
+
+// ── Position field (Arrange mode) ─────────────────────────────────────────────
+// Where the article sits on the walk through the market. Commits on blur or
+// Enter; empty clears the position. Invalid input flashes red and resets.
+function PositionInput({
+  value,
+  onCommit,
+}: {
+  value: number | null;
+  onCommit: (next: number | null) => void;
+}) {
+  const asText = (v: number | null) => (v == null ? '' : String(v));
+  const [text, setText] = useState(asText(value));
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => { setText(asText(value)); }, [value]);
+
+  const commit = () => {
+    const parsed = parsePosition(text);
+    if (parsed === undefined) {
+      setInvalid(true);
+      setText(asText(value));
+      setTimeout(() => setInvalid(false), 1200);
+      return;
+    }
+    if (parsed === value || (parsed === null && value == null)) return;
+    onCommit(parsed);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={text}
+      placeholder="Pos."
+      onChange={e => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      onClick={e => e.stopPropagation()}
+      title="Position on the walk through the market (lower = picked first)"
+      className={`w-14 px-2 py-1.5 text-sm font-semibold text-center rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 ${
+        invalid ? 'border-red-400 bg-red-50' : 'border-amber-300'
+      }`}
+    />
+  );
+}
 
 interface TodaysPickListProps {
   groupedOrders: GroupedOrders[];
@@ -102,7 +152,32 @@ export function TodaysPickList({
   const { updatePriceAndOrders } = useEKPriceUpdate();
   const { updateSupplierAcrossOrders } = useSupplierUpdate();
   const { suppliers } = useSuppliers();
+  const { products } = useProducts();
+  const { setArticlePosition, moveSupplierGroup, isSaving: isSavingOrder } = usePickOrder();
   const [activeScanSupplier, setActiveScanSupplier] = useState<{ id: string; name: string } | null>(null);
+  const [arrangeMode, setArrangeMode] = useState(false);
+
+  // Store-walk order: current position of each article, from the catalog.
+  const positionByArtikel = useMemo(
+    () => new Map(products.map(p => [p.artikelNr, p.pickPosition ?? null])),
+    [products]
+  );
+
+  const handlePositionCommit = useCallback(async (artikelNr: string, position: number | null) => {
+    try {
+      await setArticlePosition(artikelNr, position);
+    } catch (err: any) {
+      alert(err?.message || 'Could not save the position. Please try again.');
+    }
+  }, [setArticlePosition]);
+
+  const handleMoveGroup = useCallback(async (index: number, dir: -1 | 1) => {
+    try {
+      await moveSupplierGroup(groupedOrders.map(g => g.supplierId), index, dir);
+    } catch (err: any) {
+      alert(err?.message || 'Could not save the supplier order. Please try again.');
+    }
+  }, [moveSupplierGroup, groupedOrders]);
 
   const handlePriceUpdate = useCallback(async (artikelNr: string, newPrice: number) => {
     await updatePriceAndOrders(artikelNr, newPrice);
@@ -222,6 +297,17 @@ export function TodaysPickList({
           </p>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
+              onClick={() => setArrangeMode(m => !m)}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium border ${
+                arrangeMode
+                  ? 'bg-amber-500 border-amber-500 text-white hover:bg-amber-600'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {arrangeMode ? 'Done arranging' : 'Arrange order'}
+            </button>
+            <button
               onClick={handleSimplifiedAllPDF}
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
             >
@@ -268,6 +354,14 @@ export function TodaysPickList({
             </div>
           </div>
         )}
+
+        {arrangeMode && (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+            <span className="font-semibold">Store-walk order.</span> Give each article a number in the order you reach it in the market;
+            lower numbers are picked first and articles without a number stay alphabetical at the end of their group.
+            Use the arrows on a supplier to move the whole group. The order is saved for every device and used in the PDFs.
+          </p>
+        )}
       </div>
 
       {/* ── Supplier groups ───────────────────────────────────────────────── */}
@@ -295,6 +389,26 @@ export function TodaysPickList({
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-3 mb-3">
               <div className="flex items-center gap-3">
                 <div className={`w-1 h-12 rounded-full flex-shrink-0 ${isSupplierComplete ? 'bg-green-500' : colorScheme.accent}`} />
+                {arrangeMode && (
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleMoveGroup(index, -1)}
+                      disabled={index === 0 || isSavingOrder}
+                      title="Move this supplier up"
+                      className="p-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-30 disabled:active:scale-100"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveGroup(index, 1)}
+                      disabled={index === groupedOrders.length - 1 || isSavingOrder}
+                      title="Move this supplier down"
+                      className="p-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-30 disabled:active:scale-100"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className={`text-lg md:text-xl font-bold ${isSupplierComplete ? 'text-green-700' : colorScheme.text}`}>
@@ -374,20 +488,27 @@ export function TodaysPickList({
                 return (
                   <div
                     key={`${item.product?.artikelNr}-${itemIndex}`}
-                    onClick={() => item.product?.artikelNr && onToggleItem(item.product.artikelNr)}
-                    className={`py-2.5 px-2 md:px-3 transition-all duration-200 cursor-pointer select-none ${
-                      isPicked ? 'bg-green-50' : 'hover:bg-gray-50'
-                    }`}
+                    onClick={() => !arrangeMode && item.product?.artikelNr && onToggleItem(item.product.artikelNr)}
+                    className={`py-2.5 px-2 md:px-3 transition-all duration-200 select-none ${
+                      arrangeMode ? 'cursor-default' : 'cursor-pointer'
+                    } ${isPicked ? 'bg-green-50' : arrangeMode ? '' : 'hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-2">
-                      {/* Checkbox */}
+                      {/* Arrange mode: position on the walk. Normal mode: pick checkbox. */}
                       <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isPicked}
-                          onChange={() => item.product?.artikelNr && onToggleItem(item.product.artikelNr)}
-                          className="h-4 w-4 rounded border-gray-300 text-green-500 focus:ring-green-400 cursor-pointer"
-                        />
+                        {arrangeMode ? (
+                          <PositionInput
+                            value={positionByArtikel.get(item.product?.artikelNr ?? '') ?? null}
+                            onCommit={next => item.product?.artikelNr && handlePositionCommit(item.product.artikelNr, next)}
+                          />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={isPicked}
+                            onChange={() => item.product?.artikelNr && onToggleItem(item.product.artikelNr)}
+                            className="h-4 w-4 rounded border-gray-300 text-green-500 focus:ring-green-400 cursor-pointer"
+                          />
+                        )}
                       </div>
 
                       {/* Product info */}
@@ -416,14 +537,16 @@ export function TodaysPickList({
                         className="flex items-center gap-3 flex-shrink-0"
                         onClick={e => e.stopPropagation()}
                       >
-                        <div className="text-right">
-                          <p className="text-xs text-gray-500">EK</p>
-                          <EditableEKPrice
-                            value={item.ekPrice}
-                            artikelNr={item.product?.artikelNr || ''}
-                            onUpdate={(newPrice) => handlePriceUpdate(item.product?.artikelNr || '', newPrice)}
-                          />
-                        </div>
+                        {!arrangeMode && (
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500">EK</p>
+                            <EditableEKPrice
+                              value={item.ekPrice}
+                              artikelNr={item.product?.artikelNr || ''}
+                              onUpdate={(newPrice) => handlePriceUpdate(item.product?.artikelNr || '', newPrice)}
+                            />
+                          </div>
+                        )}
                         <div className="text-right">
                           <p className={`font-bold text-sm ${isPicked ? 'text-gray-400' : 'text-gray-900'}`}>
                             {item.quantity % 1 === 0

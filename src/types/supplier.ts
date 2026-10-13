@@ -10,4 +10,6 @@ export interface Supplier {
   supplierType?: string;
   rating?: number;
   notes?: string;
+  /** Order of this supplier's group on Today's Pick. Lower = first. */
+  pickPosition?: number | null;
 }

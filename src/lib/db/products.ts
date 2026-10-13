@@ -41,11 +41,31 @@ export async function fetchProducts(): Promise<Product[]> {
       supplierId: item.supplier_id,
       image: item.image_url,
       istBestand: item.ist_bestand || 0,
-      bestellnummer: item.bestellnummer
+      bestellnummer: item.bestellnummer,
+      pickPosition: typeof item.pick_position === 'number' ? item.pick_position : null
     }));
   } catch (error) {
     console.error('Failed to fetch products:', error);
     throw error;
+  }
+}
+
+/**
+ * Store-walk order for Today's Pick: where this article sits on the walk
+ * through the market. null clears it. Mirrors updatePriceDirectly: stamps
+ * user_id so the current user owns the row under RLS.
+ */
+export async function updateProductPickPosition(artikelNr: string, position: number | null): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('products')
+    .update({ pick_position: position, user_id: user?.id })
+    .eq('artikel_nr', artikelNr)
+    .select('artikel_nr');
+
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`Pick position update failed: product "${artikelNr}" not found or access denied.`);
   }
 }
 
