@@ -3,7 +3,7 @@ import { useProducts } from '../../../context/ProductContext';
 import { useSuppliers } from '../../../context/SupplierContext';
 import { updateProductPickPosition } from '../../../lib/db/products';
 import { updateSupplierPickPositions } from '../../../lib/db/suppliers';
-import { comparePickOrder, isMissingPickColumn, MIGRATION_HINT } from '../../../utils/pickOrder';
+import { comparePickOrder, isMissingPickColumn, isStoreWalkSupplier, MIGRATION_HINT } from '../../../utils/pickOrder';
 
 /**
  * Store-walk order for Today's Pick.
@@ -33,19 +33,20 @@ export function usePickOrder() {
   }, [products, patchPickPosition]);
 
   /**
-   * Move the supplier group shown at `index` one step up (-1) or down (+1).
-   * `displayedIds` are the supplier ids in the order currently on screen.
-   * Works on the full supplier list so groups that have no orders today keep
-   * their place, then renumbers every supplier 1..n and saves what changed.
+   * Move the Hamberger group shown at `index` one step up (-1) or down (+1).
+   * `displayedIds` are the Hamberger supplier ids in the order currently on
+   * screen. Works on all Hamberger suppliers so groups that have no orders
+   * today keep their place, then renumbers them 1..n and saves what changed.
+   * Other suppliers are never touched.
    */
   const moveSupplierGroup = useCallback(async (displayedIds: string[], index: number, dir: -1 | 1) => {
     const a = displayedIds[index];
     const b = displayedIds[index + dir];
     if (!a || !b) return;
 
-    const full = [...suppliers].sort((x, y) =>
-      comparePickOrder(x.pickPosition, x.companyName ?? '', y.pickPosition, y.companyName ?? '')
-    );
+    const full = suppliers
+      .filter(s => isStoreWalkSupplier(s.companyName))
+      .sort((x, y) => comparePickOrder(x.pickPosition, x.companyName ?? '', y.pickPosition, y.companyName ?? ''));
     const ia = full.findIndex(s => s.id === a);
     const ib = full.findIndex(s => s.id === b);
     if (ia < 0 || ib < 0) return;

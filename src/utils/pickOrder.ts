@@ -6,6 +6,18 @@
 
 export const NO_POSITION = Number.POSITIVE_INFINITY;
 
+/**
+ * The store-walk order is only used for the Hamberger cash & carry groups
+ * (Hamberger Gemüse, Fleisch, Mopro, Milch, Tiefkühl, Getränke, GmbH & Co. KG).
+ * Every other supplier keeps the plain alphabetical list.
+ */
+export function isStoreWalkSupplier(name: string | null | undefined): boolean {
+  return /hamberger/i.test(name ?? '');
+}
+
+/** Sort key that keeps the Hamberger groups together in their alphabetical place. */
+export const STORE_WALK_BLOCK = 'Hamberger';
+
 export function positionOf(value: number | null | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : NO_POSITION;
 }
