@@ -1,0 +1,12 @@
+# A Netlify site of its own, separate from der Stern's.
+# The root netlify.toml and .github/workflows/netlify-deploy.yml are untouched:
+# the live der Stern deploy must keep working exactly as it does today.
+[build]
+  base    = "rechnungsabgleich"
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

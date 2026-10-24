@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Invoice figures line up in a column only if the digits are the same width. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

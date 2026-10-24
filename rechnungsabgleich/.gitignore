@@ -1,0 +1,9 @@
+node_modules
+dist
+*.tsbuildinfo
+.DS_Store
+
+.env
+.env.local
+# der Stern's root .gitignore excludes .env.* — the template must survive it.
+!.env.example
