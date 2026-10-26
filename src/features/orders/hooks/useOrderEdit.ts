@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../../context/OrderContext';
 import { useProducts } from '../../../context/ProductContext';
@@ -15,6 +15,7 @@ export function useOrderEdit(orderId: string) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     // Check context first (fast path — works for all Pending/Processing orders)
@@ -135,10 +136,16 @@ export function useOrderEdit(orderId: string) {
       console.error('Failed to update item:', err);
       setError(err.message);
 
-      // Revert to original state on error
-      setOrder(orders.find(o => o.id === orderId) || null);
+      // Revert only this item. Resetting the whole order to the saved copy
+      // silently threw away every unsaved edit (removed lines, quantities).
+      setOrder(prev => {
+        if (!prev) return prev;
+        const items = prev.items.map((it, i) => (i === index ? order.items[index] : it));
+        const { totalAmount, finalAmount } = calculateOrderTotal(items, prev.discount);
+        return { ...prev, items, totalAmount, finalAmount };
+      });
     }
-  }, [order, orders, orderId, updateOrder]);
+  }, [order, updateOrder]);
 
   const handleAddItem = useCallback((product: any, quantity: number = 1) => {
     if (!order) return;
@@ -233,6 +240,10 @@ export function useOrderEdit(orderId: string) {
 
   const handleSubmit = async () => {
     if (!order) return;
+    // A second tap before React has disabled the button must not start a
+    // second save; two overlapping saves duplicate every line.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
       setIsSubmitting(true);
@@ -244,6 +255,7 @@ export function useOrderEdit(orderId: string) {
       console.error('Error updating order:', err);
       setError(err.message);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
