@@ -26,6 +26,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isFetchingRef = useRef(false);
+  // One save at a time per order. Two overlapping saves (a double tap on Save,
+  // "Pack All" over several new items) each read the same old rows, each insert
+  // their own copy and each delete only the old ones, so every article ends up
+  // twice. Serialising them makes the second save replace the first instead.
+  const savesInFlight = useRef(new Map<string, Promise<void>>());
 
   const transformOrder = (order: any): Order => ({
     id: order.id,
@@ -190,6 +195,18 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateOrder = async (id: string, order: Order) => {
+    const previous = savesInFlight.current.get(id);
+    if (previous) await previous.catch(() => undefined);
+    const run = replaceOrder(id, order);
+    savesInFlight.current.set(id, run);
+    try {
+      await run;
+    } finally {
+      if (savesInFlight.current.get(id) === run) savesInFlight.current.delete(id);
+    }
+  };
+
+  const replaceOrder = async (id: string, order: Order) => {
     try {
       setError(null);
 
@@ -199,27 +216,12 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       // Calculate total amount and final amount
       const { totalAmount, finalAmount } = calculateOrderTotal(order.items, order.discount);
 
-      // Update order details
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({
-          status: order.status,
-          total_amount: totalAmount,
-          final_amount: finalAmount,
-          order_date: order.orderDate.toISOString(),
-          delivery_date: order.deliveryDate?.toISOString(),
-          payment_status: order.paymentStatus,
-          shipping_address: order.shippingAddress,
-          notes: order.notes,
-          // Drop the legacy discount object once the credit exists as a line.
-          discount: isLegacyDiscountSuperseded(order.items, order.discount) ? null : (order.discount || null),
-          user_id: user.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (orderError) throw orderError;
+      // Lines are replaced FIRST, the order row is updated LAST. The orders
+      // table has a trigger that rebuilds the customer's favourites from the
+      // order's lines and rejects an order whose lines contain the same
+      // article twice. Writing the lines first means a save that removes a
+      // duplicate heals the order; the old order (order row first) could never
+      // save such an order at all.
 
       // Fetch existing item IDs BEFORE touching anything
       const { data: existingItems } = await supabase
@@ -270,6 +272,28 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
           throw deleteError;
         }
       }
+
+      // Update order details (totals, status, dates) now that the lines are final
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: order.status,
+          total_amount: totalAmount,
+          final_amount: finalAmount,
+          order_date: order.orderDate.toISOString(),
+          delivery_date: order.deliveryDate?.toISOString(),
+          payment_status: order.paymentStatus,
+          shipping_address: order.shippingAddress,
+          notes: order.notes,
+          // Drop the legacy discount object once the credit exists as a line.
+          discount: isLegacyDiscountSuperseded(order.items, order.discount) ? null : (order.discount || null),
+          user_id: user.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (orderError) throw orderError;
 
       await fetchOrders();
     } catch (err: any) {
