@@ -69,6 +69,7 @@ export function OrderItems({
           <ProductSearchInput
             onSelect={onAddItem}
             placeholder="Search to add products..."
+            customerId={customerId}
             selectedProducts={items.map(item => item.product.artikelNr)}
           />
         </div>
@@ -96,6 +97,7 @@ export function OrderItems({
                     setShowGutschrift(false);
                   }}
                   placeholder="Search returned product to credit..."
+                  customerId={customerId}
                   selectedProducts={[]}
                 />
                 <button

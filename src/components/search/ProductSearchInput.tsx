@@ -12,6 +12,19 @@ interface ProductSearchInputProps {
   selectedProducts?: string[];
 }
 
+/** How many of the customer's most recent orders the favourites are computed from. */
+const RECENT_ORDERS = 60;
+/** How many favourites are highlighted in the search results. */
+const TOP_FAVOURITES = 8;
+
+interface FrequentProduct {
+  product_id: string;
+  /** Orders (of the last `of_orders`) that contained this article. */
+  order_count: number;
+  total_quantity: number;
+  of_orders: number;
+}
+
 export function ProductSearchInput({
   onSelect,
   onNoResults,
@@ -22,34 +35,70 @@ export function ProductSearchInput({
   const [searchTerm, setSearchTerm] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [frequentProducts, setFrequentProducts] = useState<any[]>([]);
+  const [frequentProducts, setFrequentProducts] = useState<FrequentProduct[]>([]);
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Favourites: the articles this customer orders most often, computed from
+  // their last RECENT_ORDERS non-cancelled orders. Ranked by the number of
+  // orders the article was in (quantity breaks ties). The customer_favorites
+  // table is no longer used: a trigger filled it on every save of an order,
+  // so its counts were several times too high and its ranking wrong.
   useEffect(() => {
-    const getFrequentlyOrderedProducts = async () => {
-      if (!customerId) return;
-      
+    let cancelled = false;
+
+    const loadFavourites = async () => {
+      if (!customerId) {
+        setFrequentProducts([]);
+        return;
+      }
       try {
         const { data, error } = await supabase
-          .from('customer_favorites')
-          .select('product_id, total_quantity')
+          .from('orders')
+          .select('id, items:order_items(product_id, quantity)')
           .eq('customer_id', customerId)
-          .order('total_quantity', { ascending: false })
-          .limit(5);
+          .neq('status', 'Cancelled')
+          .order('order_date', { ascending: false })
+          .limit(RECENT_ORDERS);
 
         if (error) throw error;
-        setFrequentProducts(data || []);
+
+        const orders = data ?? [];
+        const stats = new Map<string, { orders: number; quantity: number }>();
+        for (const order of orders) {
+          const seen = new Set<string>();
+          for (const line of ((order as any).items ?? []) as { product_id: string; quantity: number }[]) {
+            if (!line.product_id) continue;
+            const s = stats.get(line.product_id) ?? { orders: 0, quantity: 0 };
+            if (!seen.has(line.product_id)) { s.orders += 1; seen.add(line.product_id); }
+            s.quantity += Number(line.quantity) || 0;
+            stats.set(line.product_id, s);
+          }
+        }
+
+        const ranked: FrequentProduct[] = [...stats.entries()]
+          .filter(([, s]) => s.orders >= 2)
+          .sort((a, b) => b[1].orders - a[1].orders || b[1].quantity - a[1].quantity)
+          .slice(0, TOP_FAVOURITES)
+          .map(([product_id, s]) => ({
+            product_id,
+            order_count: s.orders,
+            total_quantity: s.quantity,
+            of_orders: orders.length,
+          }));
+
+        if (!cancelled) setFrequentProducts(ranked);
       } catch (err) {
-        console.error('Error fetching frequently ordered products:', err);
-        setFrequentProducts([]);
+        console.error('Error loading customer favourites:', err);
+        if (!cancelled) setFrequentProducts([]);
       }
     };
 
-    getFrequentlyOrderedProducts();
+    loadFavourites();
+    return () => { cancelled = true; };
   }, [customerId]);
 
   useEffect(() => {
@@ -96,12 +145,15 @@ export function ProductSearchInput({
           supplierId: p.supplier_id,
         }));
 
+        // Favourites first, in favourite order; everything else alphabetical.
+        const rank = (artikelNr: string) => {
+          const i = frequentProducts.findIndex(fp => fp.product_id === artikelNr);
+          return i < 0 ? Number.POSITIVE_INFINITY : i;
+        };
         const sortedResults = results.sort((a, b) => {
-          const aIsFrequent = frequentProducts.some(fp => fp.product_id === a.artikelNr);
-          const bIsFrequent = frequentProducts.some(fp => fp.product_id === b.artikelNr);
-
-          if (aIsFrequent && !bIsFrequent) return -1;
-          if (!aIsFrequent && bIsFrequent) return 1;
+          const ra = rank(a.artikelNr);
+          const rb = rank(b.artikelNr);
+          if (ra !== rb) return ra < rb ? -1 : 1;
           return a.name.localeCompare(b.name);
         });
 
@@ -194,7 +246,7 @@ export function ProductSearchInput({
                               Frequently Ordered
                             </span>
                             <span className="text-xs text-gray-500">
-                              (Total: {frequentProduct.total_quantity})
+                              in {frequentProduct.order_count} of the last {frequentProduct.of_orders} orders
                             </span>
                           </div>
                         )}
